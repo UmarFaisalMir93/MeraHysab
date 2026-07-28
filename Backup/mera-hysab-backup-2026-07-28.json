@@ -35,6 +35,12 @@
       "name": "Baba",
       "type": "Person",
       "opening": 0
+    },
+    {
+      "id": "ms4x51r7pbnr1e",
+      "name": "Subham",
+      "type": "Person",
+      "opening": 0
     }
   ],
   "categories": [
@@ -1119,6 +1125,24 @@
       "description": "Crunchyroll",
       "accountId": "ms4glec7xdj1ka",
       "categoryId": "cat-entertainment"
+    },
+    {
+      "id": "ms4x5rc85h774e",
+      "type": "transfer",
+      "date": "2026-07-22",
+      "amount": 1440,
+      "description": "",
+      "fromAccountId": "ms4x51r7pbnr1e",
+      "toAccountId": "acc-cash"
+    },
+    {
+      "id": "ms4x7dekivmu1s",
+      "type": "expense",
+      "date": "2026-07-22",
+      "amount": 1440,
+      "description": "KFC with Colleagues",
+      "accountId": "acc-cash",
+      "categoryId": "cat-food"
     }
   ],
   "budgets": [],
@@ -1130,6 +1154,7 @@
   "personDirectory": [
     "Boland",
     "Imran Jameel",
-    "Baba"
+    "Baba",
+    "Subham"
   ]
 }
