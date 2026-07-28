@@ -1,0 +1,1263 @@
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import {
+  Home, ListOrdered, PlusCircle, Wallet, Upload, Settings2, ArrowLeftRight,
+  Trash2, Pencil, X, Check, TrendingUp, TrendingDown, ChevronDown, ChevronRight,
+  PiggyBank, FileSpreadsheet, AlertCircle, Landmark, Banknote, User, ArrowUpRight, ArrowDownRight,
+  Download, Save
+} from "lucide-react";
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid
+} from "recharts";
+import Papa from "papaparse";
+
+const STORAGE_KEY = "mera-hysab-data-v1";
+
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+const fmt = (n) => {
+  const neg = n < 0;
+  const v = Math.abs(Math.round(n)).toLocaleString("en-US");
+  return (neg ? "-Rs " : "Rs ") + v;
+};
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
+const monthKey = (dateStr) => dateStr.slice(0, 7);
+
+const DEFAULT_ACCOUNTS = [
+  { id: "acc-cash", name: "Cash", type: "Cash", opening: 0 },
+  { id: "acc-bank", name: "Bank", type: "Bank", opening: 0 },
+];
+
+const DEFAULT_CATEGORIES = [
+  { id: "cat-salary", name: "Salary", kind: "income" },
+  { id: "cat-freelance", name: "Freelance", kind: "income" },
+  { id: "cat-other-income", name: "Other Income", kind: "income" },
+  { id: "cat-food", name: "Food & Drink", kind: "expense" },
+  { id: "cat-transport", name: "Transport", kind: "expense" },
+  { id: "cat-shopping", name: "Shopping", kind: "expense" },
+  { id: "cat-bills", name: "Bills & Utilities", kind: "expense" },
+  { id: "cat-rent", name: "Rent Paid", kind: "expense" },
+  { id: "cat-entertainment", name: "Entertainment", kind: "expense" },
+  { id: "cat-medical", name: "Medical", kind: "expense" },
+  { id: "cat-personal", name: "Personal", kind: "expense" },
+  { id: "cat-other-expense", name: "Other Expenses", kind: "expense" },
+];
+
+const ACCOUNT_ICON = { Cash: Banknote, Bank: Landmark, Person: User, Savings: PiggyBank };
+const ACCOUNT_TYPES = ["Cash", "Bank", "Savings", "Person"];
+
+function defaultData() {
+  return {
+    accounts: DEFAULT_ACCOUNTS,
+    categories: DEFAULT_CATEGORIES,
+    transactions: [],
+    budgets: [],
+    bankDirectory: ["Bank"],
+    personDirectory: [],
+  };
+}
+
+// Fills in fields that may be missing from data saved by an older version of the app
+function withDefaults(d) {
+  return {
+    accounts: d.accounts || [],
+    categories: d.categories || [],
+    transactions: d.transactions || [],
+    budgets: d.budgets || [],
+    bankDirectory: d.bankDirectory || [],
+    personDirectory: d.personDirectory || [],
+  };
+}
+
+function useLedgerData() {
+  const [data, setData] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+  const saveTimer = useRef(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get(STORAGE_KEY, false);
+        setData(res && res.value ? withDefaults(JSON.parse(res.value)) : defaultData());
+      } catch (e) {
+        setData(defaultData());
+      }
+      setLoaded(true);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!loaded || !data) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      try {
+        await window.storage.set(STORAGE_KEY, JSON.stringify(data), false);
+      } catch (e) {
+        /* ignore transient storage errors */
+      }
+    }, 400);
+    return () => clearTimeout(saveTimer.current);
+  }, [data, loaded]);
+
+  return [data, setData, loaded];
+}
+
+function accountBalance(acc, transactions) {
+  let bal = acc.opening || 0;
+  for (const t of transactions) {
+    if (t.type === "transfer") {
+      if (t.fromAccountId === acc.id) bal -= t.amount;
+      if (t.toAccountId === acc.id) bal += t.amount;
+    } else if (t.accountId === acc.id) {
+      bal += t.type === "income" ? t.amount : -t.amount;
+    }
+  }
+  return bal;
+}
+
+const PALETTE = ["#8B2E28", "#B8862E", "#2F5233", "#4A5A5C", "#6E4A2E", "#3E6B6F", "#7A4A6B", "#A65D2E"];
+
+export default function App() {
+  const [data, setData, loaded] = useLedgerData();
+  const [tab, setTab] = useState("dashboard");
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingTxn, setEditingTxn] = useState(null);
+
+  if (!loaded || !data) {
+    return (
+      <div style={styles.loadingWrap}>
+        <div style={styles.loadingCard}>Opening the ledger…</div>
+      </div>
+    );
+  }
+
+  const update = (fn) => setData((prev) => fn({ ...prev }));
+
+  return (
+    <div style={styles.app}>
+      <style>{css}</style>
+      <header style={styles.header}>
+        <div style={styles.headerBadge}>MH</div>
+        <div>
+          <div style={styles.headerTitle}>Mera Hysab</div>
+          <div style={styles.headerSub}>your ledger, your rules</div>
+        </div>
+      </header>
+
+      <main style={styles.main}>
+        {tab === "dashboard" && <Dashboard data={data} />}
+        {tab === "transactions" && (
+          <Transactions
+            data={data}
+            update={update}
+            onEdit={(t) => {
+              setEditingTxn(t);
+              setShowAdd(true);
+            }}
+          />
+        )}
+        {tab === "budgets" && <Budgets data={data} update={update} />}
+        {tab === "more" && <MorePanel data={data} update={update} />}
+      </main>
+
+      <button
+        style={styles.fab}
+        onClick={() => {
+          setEditingTxn(null);
+          setShowAdd(true);
+        }}
+        aria-label="Add transaction"
+      >
+        <PlusCircle size={26} />
+      </button>
+
+      <nav style={styles.nav}>
+        <NavBtn icon={Home} label="Home" active={tab === "dashboard"} onClick={() => setTab("dashboard")} />
+        <NavBtn icon={ListOrdered} label="Ledger" active={tab === "transactions"} onClick={() => setTab("transactions")} />
+        <div style={{ width: 56 }} />
+        <NavBtn icon={PiggyBank} label="Budgets" active={tab === "budgets"} onClick={() => setTab("budgets")} />
+        <NavBtn icon={Settings2} label="More" active={tab === "more"} onClick={() => setTab("more")} />
+      </nav>
+
+      {showAdd && (
+        <AddTransactionModal
+          data={data}
+          update={update}
+          editingTxn={editingTxn}
+          onClose={() => {
+            setShowAdd(false);
+            setEditingTxn(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function NavBtn({ icon: Icon, label, active, onClick }) {
+  return (
+    <button onClick={onClick} style={{ ...styles.navBtn, color: active ? "var(--ink)" : "var(--ink-soft)" }}>
+      <Icon size={20} strokeWidth={active ? 2.4 : 1.8} />
+      <span style={{ fontSize: 11, marginTop: 2 }}>{label}</span>
+      {active && <div style={styles.navDot} />}
+    </button>
+  );
+}
+
+/* ---------------- Dashboard ---------------- */
+
+function Dashboard({ data }) {
+  const netWorth = data.accounts.reduce((s, a) => s + accountBalance(a, data.transactions), 0);
+  const thisMonth = monthKey(todayStr());
+
+  const monthTxns = data.transactions.filter((t) => monthKey(t.date) === thisMonth);
+  const income = monthTxns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const expense = monthTxns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+
+  const catMap = Object.fromEntries(data.categories.map((c) => [c.id, c.name]));
+  const expenseByCat = {};
+  monthTxns
+    .filter((t) => t.type === "expense")
+    .forEach((t) => {
+      const name = catMap[t.categoryId] || "Uncategorized";
+      expenseByCat[name] = (expenseByCat[name] || 0) + t.amount;
+    });
+  const pieData = Object.entries(expenseByCat)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+
+  const last6 = useMemo(() => {
+    const out = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.toISOString().slice(0, 7);
+      const label = d.toLocaleDateString("en-US", { month: "short" });
+      const inc = data.transactions.filter((t) => t.type === "income" && monthKey(t.date) === key).reduce((s, t) => s + t.amount, 0);
+      const exp = data.transactions.filter((t) => t.type === "expense" && monthKey(t.date) === key).reduce((s, t) => s + t.amount, 0);
+      out.push({ month: label, Income: inc, Expense: exp });
+    }
+    return out;
+  }, [data.transactions]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={styles.ledgerCard}>
+        <div style={styles.ledgerStitch} />
+        <div style={styles.ledgerSeal}>MH</div>
+        <div style={styles.ledgerLabel}>Net worth, across all accounts</div>
+        <div style={styles.ledgerAmount}>{fmt(netWorth)}</div>
+        <div style={styles.ledgerRow}>
+          <span style={{ color: "var(--credit)", display: "flex", alignItems: "center", gap: 4 }}>
+            <TrendingUp size={14} /> {fmt(income)} in
+          </span>
+          <span style={{ color: "var(--debit)", display: "flex", alignItems: "center", gap: 4 }}>
+            <TrendingDown size={14} /> {fmt(expense)} out
+          </span>
+        </div>
+      </div>
+
+      {ACCOUNT_TYPES.map((t) => {
+        const group = data.accounts.filter((a) => a.type === t);
+        if (group.length === 0) return null;
+        const groupTotal = group.reduce((s, a) => s + accountBalance(a, data.transactions), 0);
+        return (
+          <div key={t}>
+            <div style={{ ...styles.sectionLabel, display: "flex", justifyContent: "space-between" }}>
+              <span>{t}{t === "Person" ? " (owed / owing)" : "s"}</span>
+              <span style={{ fontFamily: "var(--mono)" }}>{fmt(groupTotal)}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {group.map((a) => {
+                const Icon = ACCOUNT_ICON[a.type] || Wallet;
+                const bal = accountBalance(a, data.transactions);
+                return (
+                  <div key={a.id} style={styles.accountRow}>
+                    <div style={styles.accountIconWrap}>
+                      <Icon size={17} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{a.name}</div>
+                    </div>
+                    <div style={{ fontFamily: "var(--mono)", fontWeight: 600, color: bal < 0 ? "var(--debit)" : "var(--ink)" }}>
+                      {fmt(bal)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      {pieData.length > 0 && (
+        <div style={styles.card}>
+          <div style={styles.sectionLabel}>This month's spending</div>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={45} outerRadius={75} paddingAngle={2}>
+                {pieData.map((_, i) => (
+                  <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(v) => fmt(v)} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={styles.legendWrap}>
+            {pieData.slice(0, 6).map((p, i) => (
+              <div key={p.name} style={styles.legendItem}>
+                <span style={{ ...styles.legendDot, background: PALETTE[i % PALETTE.length] }} />
+                <span style={{ flex: 1 }}>{p.name}</span>
+                <span style={{ fontFamily: "var(--mono)" }}>{fmt(p.value)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={styles.card}>
+        <div style={styles.sectionLabel}>Last 6 months</div>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={last6} barGap={2}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--paper-line)" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--ink-soft)" }} axisLine={false} tickLine={false} />
+            <YAxis hide />
+            <Tooltip formatter={(v) => fmt(v)} />
+            <Bar dataKey="Income" fill="var(--credit)" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="Expense" fill="var(--debit)" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Transactions ---------------- */
+
+function Transactions({ data, update, onEdit }) {
+  const catMap = Object.fromEntries(data.categories.map((c) => [c.id, c.name]));
+  const accMap = Object.fromEntries(data.accounts.map((a) => [a.id, a.name]));
+
+  const sorted = [...data.transactions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  const groups = {};
+  sorted.forEach((t) => {
+    groups[t.date] = groups[t.date] || [];
+    groups[t.date].push(t);
+  });
+
+  const remove = (id) => update((d) => ({ ...d, transactions: d.transactions.filter((t) => t.id !== id) }));
+
+  if (sorted.length === 0) {
+    return (
+      <div style={styles.emptyState}>
+        <FileSpreadsheet size={28} style={{ opacity: 0.5 }} />
+        <div style={{ marginTop: 8, fontWeight: 600 }}>No entries yet</div>
+        <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>Tap + to add your first transaction, or import a CSV from More.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      {Object.entries(groups).map(([date, txns]) => (
+        <div key={date}>
+          <div style={styles.dateHeading}>
+            {new Date(date).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {txns.map((t) => (
+              <div key={t.id} style={styles.txnRow} onClick={() => onEdit(t)}>
+                <div style={{ ...styles.txnIcon, background: t.type === "income" ? "var(--credit-bg)" : t.type === "expense" ? "var(--debit-bg)" : "var(--paper-line)" }}>
+                  {t.type === "income" && <ArrowDownRight size={16} color="var(--credit)" />}
+                  {t.type === "expense" && <ArrowUpRight size={16} color="var(--debit)" />}
+                  {t.type === "transfer" && <ArrowLeftRight size={16} color="var(--ink-soft)" />}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {t.type === "transfer"
+                      ? `${accMap[t.fromAccountId] || "?"} → ${accMap[t.toAccountId] || "?"}`
+                      : t.description || catMap[t.categoryId] || "Untitled"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--ink-soft)" }}>
+                    {t.type === "transfer" ? "Transfer" : `${catMap[t.categoryId] || "No category"} · ${accMap[t.accountId] || "?"}`}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontWeight: 700,
+                    color: t.type === "income" ? "var(--credit)" : t.type === "expense" ? "var(--debit)" : "var(--ink)",
+                  }}
+                >
+                  {t.type === "expense" ? "-" : t.type === "income" ? "+" : ""}
+                  {fmt(t.amount)}
+                </div>
+                <button
+                  style={styles.iconBtnGhost}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    remove(t.id);
+                  }}
+                  aria-label="Delete"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ---------------- Budgets ---------------- */
+
+function Budgets({ data, update }) {
+  const thisMonth = monthKey(todayStr());
+  const expenseCats = data.categories.filter((c) => c.kind === "expense");
+
+  const spendByCategory = (catId) =>
+    data.transactions
+      .filter((t) => t.type === "expense" && t.categoryId === catId && monthKey(t.date) === thisMonth)
+      .reduce((s, t) => s + t.amount, 0);
+
+  const setBudget = (catId, amount) =>
+    update((d) => {
+      const others = d.budgets.filter((b) => !(b.categoryId === catId && b.month === thisMonth));
+      const amt = Number(amount) || 0;
+      const budgets = amt > 0 ? [...others, { categoryId: catId, month: thisMonth, amount: amt }] : others;
+      return { ...d, budgets };
+    });
+
+  const budgetFor = (catId) => data.budgets.find((b) => b.categoryId === catId && b.month === thisMonth)?.amount || 0;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={styles.sectionLabel}>Budgets for {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}</div>
+      {expenseCats.map((c) => {
+        const budget = budgetFor(c.id);
+        const spent = spendByCategory(c.id);
+        const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
+        const over = budget > 0 && spent > budget;
+        return (
+          <div key={c.id} style={styles.card}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{c.name}</div>
+              <input
+                type="number"
+                placeholder="Set budget"
+                defaultValue={budget || ""}
+                onBlur={(e) => setBudget(c.id, e.target.value)}
+                style={styles.budgetInput}
+              />
+            </div>
+            {budget > 0 && (
+              <>
+                <div style={styles.progressTrack}>
+                  <div style={{ ...styles.progressFill, width: `${pct}%`, background: over ? "var(--debit)" : "var(--credit)" }} />
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--ink-soft)", marginTop: 4 }}>
+                  <span>{fmt(spent)} spent</span>
+                  <span>{over ? "over by " + fmt(spent - budget) : fmt(budget - spent) + " left"}</span>
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---------------- More: Accounts, Categories, Import ---------------- */
+
+function MorePanel({ data, update }) {
+  const [open, setOpen] = useState("accounts");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <Collapsible title="Accounts" icon={Wallet} open={open === "accounts"} onToggle={() => setOpen(open === "accounts" ? "" : "accounts")}>
+        <AccountsEditor data={data} update={update} />
+      </Collapsible>
+      <Collapsible title="Categories" icon={ListOrdered} open={open === "categories"} onToggle={() => setOpen(open === "categories" ? "" : "categories")}>
+        <CategoriesEditor data={data} update={update} />
+      </Collapsible>
+      <Collapsible title="Import from CSV" icon={Upload} open={open === "import"} onToggle={() => setOpen(open === "import" ? "" : "import")}>
+        <ImportPanel data={data} update={update} />
+      </Collapsible>
+      <Collapsible title="Backup & Restore" icon={Save} open={open === "backup"} onToggle={() => setOpen(open === "backup" ? "" : "backup")}>
+        <BackupPanel data={data} update={update} />
+      </Collapsible>
+    </div>
+  );
+}
+
+function Collapsible({ title, icon: Icon, open, onToggle, children }) {
+  return (
+    <div style={styles.card}>
+      <button onClick={onToggle} style={styles.collapsibleHeader}>
+        <Icon size={17} />
+        <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 14 }}>{title}</span>
+        {open ? <ChevronDown size={17} /> : <ChevronRight size={17} />}
+      </button>
+      {open && <div style={{ marginTop: 10 }}>{children}</div>}
+    </div>
+  );
+}
+
+function AccountsEditor({ data, update }) {
+  const [type, setType] = useState("Bank");
+  const [name, setName] = useState("");
+  const [pickMode, setPickMode] = useState(data.bankDirectory && data.bankDirectory.length > 0 ? "existing" : "new");
+  const [existingPick, setExistingPick] = useState(data.bankDirectory?.[0] || "");
+  const [opening, setOpening] = useState("");
+  const [editingId, setEditingId] = useState(null);
+
+  const isEditing = editingId !== null;
+  const usesDirectory = !isEditing && (type === "Bank" || type === "Person");
+  const directory = type === "Bank" ? data.bankDirectory : type === "Person" ? data.personDirectory : [];
+  const directoryKey = type === "Bank" ? "bankDirectory" : "personDirectory";
+
+  const resetForm = () => {
+    setEditingId(null);
+    setName("");
+    setOpening("");
+    setPickMode(null);
+  };
+
+  const startEdit = (a) => {
+    setEditingId(a.id);
+    setType(a.type);
+    setName(a.name);
+    setOpening(a.opening ? String(a.opening) : "");
+  };
+
+  const save = () => {
+    if (isEditing) {
+      const newName = name.trim();
+      if (!newName) return;
+      update((d) => {
+        const accounts = d.accounts.map((a) => (a.id === editingId ? { ...a, name: newName, type, opening: Number(opening) || 0 } : a));
+        const dirKey = type === "Bank" ? "bankDirectory" : type === "Person" ? "personDirectory" : null;
+        const patch = { ...d, accounts };
+        if (dirKey) {
+          const dir = d[dirKey] || [];
+          patch[dirKey] = dir.includes(newName) ? dir : [...dir, newName];
+        }
+        return patch;
+      });
+      resetForm();
+      return;
+    }
+    const finalName = usesDirectory && pickMode === "existing" ? existingPick : name.trim();
+    if (!finalName) return;
+    update((d) => {
+      const dir = d[directoryKey] || [];
+      const nextDir = usesDirectory && !dir.includes(finalName) ? [...dir, finalName] : dir;
+      return {
+        ...d,
+        accounts: [...d.accounts, { id: uid(), name: finalName, type, opening: Number(opening) || 0 }],
+        ...(usesDirectory ? { [directoryKey]: nextDir } : {}),
+      };
+    });
+    setName("");
+    setOpening("");
+  };
+
+  const remove = (id) => {
+    if (editingId === id) resetForm();
+    update((d) => ({ ...d, accounts: d.accounts.filter((a) => a.id !== id) }));
+  };
+
+  return (
+    <div>
+      {ACCOUNT_TYPES.map((t) => {
+        const group = data.accounts.filter((a) => a.type === t);
+        if (group.length === 0) return null;
+        return (
+          <div key={t} style={{ marginBottom: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", margin: "6px 0 2px" }}>{t}</div>
+            {group.map((a) => (
+              <div key={a.id} style={styles.editRow}>
+                <span style={{ flex: 1 }}>{a.name}</span>
+                <button style={styles.iconBtnGhost} onClick={() => startEdit(a)}><Pencil size={14} /></button>
+                <button style={styles.iconBtnGhost} onClick={() => remove(a.id)}><Trash2 size={14} /></button>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+
+      <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--paper-line)" }}>
+        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>{isEditing ? "Edit account" : "Add a new account"}</div>
+        <label style={styles.label}>Account type</label>
+        <select
+          style={styles.selectInput}
+          value={type}
+          onChange={(e) => {
+            const t = e.target.value;
+            setType(t);
+            if (!isEditing) {
+              const dir = t === "Bank" ? data.bankDirectory : t === "Person" ? data.personDirectory : [];
+              setPickMode(dir.length > 0 ? "existing" : "new");
+              setExistingPick(dir[0] || "");
+              setName("");
+            }
+          }}
+        >
+          {ACCOUNT_TYPES.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+
+        {usesDirectory && directory.length > 0 && (
+          <div style={styles.typeToggle}>
+            <button
+              style={{ ...styles.typeToggleBtn, background: pickMode === "existing" ? "var(--ink)" : "transparent", color: pickMode === "existing" ? "#fff" : "var(--ink)" }}
+              onClick={() => setPickMode("existing")}
+            >
+              Choose existing
+            </button>
+            <button
+              style={{ ...styles.typeToggleBtn, background: pickMode === "new" ? "var(--ink)" : "transparent", color: pickMode === "new" ? "#fff" : "var(--ink)" }}
+              onClick={() => setPickMode("new")}
+            >
+              Add new {type.toLowerCase()}
+            </button>
+          </div>
+        )}
+
+        <label style={styles.label}>{type === "Bank" ? "Bank name" : type === "Person" ? "Person's name" : "Account name"}</label>
+        {usesDirectory && pickMode === "existing" ? (
+          <select style={styles.selectInput} value={existingPick} onChange={(e) => setExistingPick(e.target.value)}>
+            {directory.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            style={styles.textInput}
+            placeholder={type === "Bank" ? "e.g. Bank Alfalah" : type === "Person" ? "e.g. Imran Jameel" : "Account name"}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        )}
+
+        <label style={styles.label}>Opening balance</label>
+        <input style={styles.textInput} type="number" placeholder="0" value={opening} onChange={(e) => setOpening(e.target.value)} />
+
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <button style={styles.primaryBtn} onClick={save}>
+            {isEditing ? <Check size={16} /> : <PlusCircle size={16} />} {isEditing ? "Save changes" : `Add ${type} account`}
+          </button>
+          {isEditing && (
+            <button style={{ ...styles.primaryBtn, background: "var(--ink-soft)" }} onClick={resetForm}>
+              <X size={16} /> Cancel
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CategoriesEditor({ data, update }) {
+  const [name, setName] = useState("");
+  const [kind, setKind] = useState("expense");
+
+  const add = () => {
+    if (!name.trim()) return;
+    update((d) => ({ ...d, categories: [...d.categories, { id: uid(), name: name.trim(), kind }] }));
+    setName("");
+  };
+  const remove = (id) => update((d) => ({ ...d, categories: d.categories.filter((c) => c.id !== id) }));
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--credit)", marginBottom: 4 }}>Income</div>
+      {data.categories.filter((c) => c.kind === "income").map((c) => (
+        <div key={c.id} style={styles.editRow}>
+          <span style={{ flex: 1 }}>{c.name}</span>
+          <button style={styles.iconBtnGhost} onClick={() => remove(c.id)}><Trash2 size={14} /></button>
+        </div>
+      ))}
+      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--debit)", margin: "10px 0 4px" }}>Expense</div>
+      {data.categories.filter((c) => c.kind === "expense").map((c) => (
+        <div key={c.id} style={styles.editRow}>
+          <span style={{ flex: 1 }}>{c.name}</span>
+          <button style={styles.iconBtnGhost} onClick={() => remove(c.id)}><Trash2 size={14} /></button>
+        </div>
+      ))}
+      <div style={styles.addRow}>
+        <input style={styles.textInput} placeholder="Category name" value={name} onChange={(e) => setName(e.target.value)} />
+        <select style={styles.selectInput} value={kind} onChange={(e) => setKind(e.target.value)}>
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+        </select>
+        <button style={styles.smallBtn} onClick={add}><PlusCircle size={16} /></button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- CSV Import ---------------- */
+
+function ImportPanel({ data, update }) {
+  const [preview, setPreview] = useState(null);
+  const [error, setError] = useState("");
+  const fileRef = useRef(null);
+
+  const handleFile = (file) => {
+    setError("");
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (res) => {
+        try {
+          const built = buildImportPlan(res.data, data);
+          setPreview(built);
+        } catch (e) {
+          setError("Could not read that file. Expected columns: Voucher Type, Voucher Date, Voucher Amount, Description, Category Name, Account Name.");
+        }
+      },
+      error: () => setError("Could not parse the CSV file."),
+    });
+  };
+
+  const confirmImport = () => {
+    if (!preview) return;
+    update((d) => {
+      const newPersonNames = preview.newAccounts.filter((a) => a.type === "Person").map((a) => a.name);
+      const personDirectory = [...new Set([...(d.personDirectory || []), ...newPersonNames])];
+      return {
+        ...d,
+        accounts: [...d.accounts, ...preview.newAccounts],
+        categories: [...d.categories, ...preview.newCategories],
+        transactions: [...d.transactions, ...preview.transactions],
+        personDirectory,
+      };
+    });
+    setPreview(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  return (
+    <div>
+      <p style={{ fontSize: 12.5, color: "var(--ink-soft)", marginBottom: 8 }}>
+        Upload a CSV with columns: <b>Voucher Type</b> (Income/Expense/Transfer), <b>Voucher Date</b> (DD/MM/YYYY),{" "}
+        <b>Voucher Amount</b>, <b>Description</b>, <b>Category Name</b>, <b>Account Name</b>. Any account name not
+        already in your list gets created as a "Person" type account by default — if one is actually a Bank or Cash
+        account, delete it under More → Accounts afterward and re-add it with the right type. Unknown categories are
+        created automatically too.
+      </p>
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".csv"
+        onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])}
+        style={{ fontSize: 13 }}
+      />
+      {error && (
+        <div style={styles.errorBox}>
+          <AlertCircle size={15} /> <span>{error}</span>
+        </div>
+      )}
+      {preview && (
+        <div style={{ marginTop: 12 }}>
+          <div style={styles.importSummary}>
+            <div>{preview.transactions.length} transactions ready to import</div>
+            <div style={{ color: "var(--ink-soft)" }}>{preview.newAccounts.length} new account(s), {preview.newCategories.length} new categor{preview.newCategories.length === 1 ? "y" : "ies"}</div>
+            {preview.skipped.length > 0 && (
+              <div style={{ color: "var(--debit)" }}>{preview.skipped.length} row(s) skipped (unpaired transfer or unreadable row)</div>
+            )}
+          </div>
+          <button style={styles.primaryBtn} onClick={confirmImport}>
+            <Check size={16} /> Import {preview.transactions.length} transactions
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function parseDDMMYYYY(s) {
+  const parts = (s || "").trim().split("/");
+  if (parts.length !== 3) return null;
+  const [d, m, y] = parts.map((p) => parseInt(p, 10));
+  if (!d || !m || !y) return null;
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+function buildImportPlan(rows, data) {
+  const accountsByName = Object.fromEntries(data.accounts.map((a) => [a.name.toLowerCase(), a]));
+  const categoriesByName = Object.fromEntries(data.categories.map((c) => [c.name.toLowerCase(), c]));
+  const newAccounts = [];
+  const newCategories = [];
+  const transactions = [];
+  const skipped = [];
+
+  const getAccount = (name) => {
+    const key = (name || "").trim().toLowerCase();
+    if (!key) return null;
+    if (accountsByName[key]) return accountsByName[key];
+    const existing = newAccounts.find((a) => a.name.toLowerCase() === key);
+    if (existing) return existing;
+    const acc = { id: uid(), name: name.trim(), type: "Person", opening: 0 };
+    newAccounts.push(acc);
+    accountsByName[key] = acc;
+    return acc;
+  };
+
+  const getCategory = (name, kind) => {
+    const key = (name || "").trim().toLowerCase();
+    if (!key || key === "no category") return null;
+    if (categoriesByName[key]) return categoriesByName[key];
+    const existing = newCategories.find((c) => c.name.toLowerCase() === key);
+    if (existing) return existing;
+    const cat = { id: uid(), name: name.trim(), kind };
+    newCategories.push(cat);
+    categoriesByName[key] = cat;
+    return cat;
+  };
+
+  // Pair up consecutive Transfer rows with matching date and opposite amount
+  const used = new Array(rows.length).fill(false);
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const vtype = (r["Voucher Type"] || "").trim();
+    if (vtype !== "Transfer" || used[i]) continue;
+    const date = parseDDMMYYYY(r["Voucher Date"]);
+    const amt = parseFloat(r["Voucher Amount"]);
+    if (!date || isNaN(amt)) {
+      skipped.push(r);
+      used[i] = true;
+      continue;
+    }
+    let pairIdx = -1;
+    for (let j = i + 1; j < rows.length && j <= i + 4; j++) {
+      if (used[j]) continue;
+      const r2 = rows[j];
+      if ((r2["Voucher Type"] || "").trim() !== "Transfer") break;
+      const amt2 = parseFloat(r2["Voucher Amount"]);
+      if (parseDDMMYYYY(r2["Voucher Date"]) === date && Math.abs(amt + amt2) < 0.01) {
+        pairIdx = j;
+        break;
+      }
+    }
+    if (pairIdx === -1) {
+      skipped.push(r);
+      used[i] = true;
+      continue;
+    }
+    const r2 = rows[pairIdx];
+    used[i] = true;
+    used[pairIdx] = true;
+    const fromRow = amt < 0 ? r : r2;
+    const toRow = amt < 0 ? r2 : r;
+    const fromAcc = getAccount(fromRow["Account Name"]);
+    const toAcc = getAccount(toRow["Account Name"]);
+    if (!fromAcc || !toAcc) {
+      skipped.push(r);
+      continue;
+    }
+    transactions.push({
+      id: uid(),
+      type: "transfer",
+      date,
+      amount: Math.abs(amt),
+      fromAccountId: fromAcc.id,
+      toAccountId: toAcc.id,
+      description: (fromRow["Description"] || toRow["Description"] || "").trim(),
+    });
+  }
+
+  rows.forEach((r, i) => {
+    if (used[i]) return;
+    const vtype = (r["Voucher Type"] || "").trim();
+    const date = parseDDMMYYYY(r["Voucher Date"]);
+    const amt = parseFloat(r["Voucher Amount"]);
+    if (!date || isNaN(amt) || (vtype !== "Income" && vtype !== "Expense")) {
+      skipped.push(r);
+      return;
+    }
+    const acc = getAccount(r["Account Name"]);
+    if (!acc) {
+      skipped.push(r);
+      return;
+    }
+    const kind = vtype === "Income" ? "income" : "expense";
+    const cat = getCategory(r["Category Name"], kind);
+    transactions.push({
+      id: uid(),
+      type: kind,
+      date,
+      amount: Math.abs(amt),
+      accountId: acc.id,
+      categoryId: cat ? cat.id : null,
+      description: (r["Description"] || "").trim(),
+    });
+  });
+
+  return { newAccounts, newCategories, transactions, skipped };
+}
+
+/* ---------------- Backup & Restore ---------------- */
+
+function BackupPanel({ data, update }) {
+  const fileRef = useRef(null);
+  const [pendingRestore, setPendingRestore] = useState(null);
+  const [error, setError] = useState("");
+  const [justExported, setJustExported] = useState(false);
+
+  const doExport = () => {
+    const payload = JSON.stringify(data, null, 2);
+    const blob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `mera-hysab-backup-${todayStr()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setJustExported(true);
+    setTimeout(() => setJustExported(false), 2500);
+  };
+
+  const handleFile = (file) => {
+    setError("");
+    setPendingRestore(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        if (!Array.isArray(parsed.accounts) || !Array.isArray(parsed.transactions) || !Array.isArray(parsed.categories)) {
+          throw new Error("unexpected shape");
+        }
+        setPendingRestore(withDefaults(parsed));
+      } catch (e) {
+        setError("That doesn't look like a valid Mera Hysab backup file.");
+      }
+    };
+    reader.onerror = () => setError("Could not read that file.");
+    reader.readAsText(file);
+  };
+
+  const confirmRestore = () => {
+    if (!pendingRestore) return;
+    update(() => pendingRestore);
+    setPendingRestore(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const cancelRestore = () => {
+    setPendingRestore(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  return (
+    <div>
+      <p style={{ fontSize: 12.5, color: "var(--ink-soft)", marginBottom: 8 }}>
+        Download a complete copy of your accounts, categories, transactions, and budgets. Keep it somewhere safe —
+        email it to yourself, save it to Drive, whatever works. You can restore from it any time, on any device.
+      </p>
+      <button style={styles.primaryBtn} onClick={doExport}>
+        <Download size={16} /> {justExported ? "Downloaded ✓" : "Download backup (.json)"}
+      </button>
+
+      <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--paper-line)" }}>
+        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Restore from a backup file</div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".json,application/json"
+          onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])}
+          style={{ fontSize: 13 }}
+        />
+        {error && (
+          <div style={styles.errorBox}>
+            <AlertCircle size={15} /> <span>{error}</span>
+          </div>
+        )}
+        {pendingRestore && (
+          <div style={{ marginTop: 10 }}>
+            <div style={styles.importSummary}>
+              <div style={{ color: "var(--debit)", fontWeight: 700 }}>
+                This replaces everything currently in the app with the backup:
+              </div>
+              <div>
+                {pendingRestore.accounts.length} accounts · {pendingRestore.categories.length} categories ·{" "}
+                {pendingRestore.transactions.length} transactions · {pendingRestore.budgets.length} budgets
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button style={{ ...styles.primaryBtn, background: "var(--debit)" }} onClick={confirmRestore}>
+                <Check size={16} /> Restore this backup
+              </button>
+              <button style={{ ...styles.primaryBtn, background: "var(--ink-soft)" }} onClick={cancelRestore}>
+                <X size={16} /> Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Add / Edit Transaction Modal ---------------- */
+
+function AddTransactionModal({ data, update, editingTxn, onClose }) {
+  const [type, setType] = useState(editingTxn?.type || "expense");
+  const [date, setDate] = useState(editingTxn?.date || todayStr());
+  const [amount, setAmount] = useState(editingTxn?.amount?.toString() || "");
+  const [accountId, setAccountId] = useState(editingTxn?.accountId || data.accounts[0]?.id || "");
+  const [fromAccountId, setFromAccountId] = useState(editingTxn?.fromAccountId || data.accounts[0]?.id || "");
+  const [toAccountId, setToAccountId] = useState(editingTxn?.toAccountId || data.accounts[1]?.id || data.accounts[0]?.id || "");
+  const [categoryId, setCategoryId] = useState(editingTxn?.categoryId || "");
+  const [description, setDescription] = useState(editingTxn?.description || "");
+  const [touched, setTouched] = useState(false);
+
+  const relevantCats = data.categories.filter((c) => c.kind === (type === "income" ? "income" : "expense"));
+
+  // Keep category valid whenever the type (income/expense) changes
+  useEffect(() => {
+    if (type === "transfer") return;
+    if (!relevantCats.find((c) => c.id === categoryId)) {
+      setCategoryId(relevantCats[0]?.id || "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type]);
+
+  const errors = {
+    amount: !(Math.abs(Number(amount)) > 0),
+    date: !date,
+    account: type !== "transfer" && !accountId,
+    category: type !== "transfer" && !categoryId,
+    fromAccount: type === "transfer" && !fromAccountId,
+    toAccount: type === "transfer" && !toAccountId,
+    sameAccount: type === "transfer" && fromAccountId && fromAccountId === toAccountId,
+  };
+  const hasErrors = Object.values(errors).some(Boolean);
+  const noCategoriesAvailable = type !== "transfer" && relevantCats.length === 0;
+
+  const save = () => {
+    setTouched(true);
+    if (hasErrors || noCategoriesAvailable) return;
+    const amt = Math.abs(Number(amount));
+    const base = { id: editingTxn?.id || uid(), type, date, amount: amt, description: description.trim() };
+    const txn = type === "transfer" ? { ...base, fromAccountId, toAccountId } : { ...base, accountId, categoryId };
+    update((d) => {
+      const rest = d.transactions.filter((t) => t.id !== txn.id);
+      return { ...d, transactions: [...rest, txn] };
+    });
+    onClose();
+  };
+
+  const errStyle = (bad) => (touched && bad ? { border: "1.5px solid var(--debit)" } : {});
+
+  return (
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div style={styles.modalSheet} onClick={(e) => e.stopPropagation()}>
+        <div style={styles.modalHeader}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>{editingTxn ? "Edit entry" : "New entry"}</div>
+          <button style={styles.iconBtnGhost} onClick={onClose}><X size={18} /></button>
+        </div>
+
+        <div style={styles.typeToggle}>
+          {["expense", "income", "transfer"].map((t) => (
+            <button
+              key={t}
+              onClick={() => setType(t)}
+              style={{
+                ...styles.typeToggleBtn,
+                background: type === t ? (t === "income" ? "var(--credit)" : t === "expense" ? "var(--debit)" : "var(--ink)") : "transparent",
+                color: type === t ? "#fff" : "var(--ink)",
+              }}
+            >
+              {t === "expense" ? "Expense" : t === "income" ? "Income" : "Transfer"}
+            </button>
+          ))}
+        </div>
+
+        <label style={styles.label}>Amount (PKR) *</label>
+        <input
+          style={{ ...styles.textInput, ...errStyle(errors.amount) }}
+          type="number"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="0"
+          autoFocus
+        />
+
+        <label style={styles.label}>Date *</label>
+        <input style={{ ...styles.textInput, ...errStyle(errors.date) }} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+
+        {type !== "transfer" ? (
+          <>
+            <label style={styles.label}>Account *</label>
+            <select style={{ ...styles.selectInput, ...errStyle(errors.account) }} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+              {data.accounts.length === 0 && <option value="">Add an account first</option>}
+              {data.accounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+
+            <label style={styles.label}>Category *</label>
+            {noCategoriesAvailable ? (
+              <div style={styles.errorBox}>
+                <AlertCircle size={15} />
+                <span>No {type} categories yet — add one under More → Categories first.</span>
+              </div>
+            ) : (
+              <select style={{ ...styles.selectInput, ...errStyle(errors.category) }} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                {relevantCats.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            )}
+          </>
+        ) : (
+          <>
+            <label style={styles.label}>From *</label>
+            <select style={{ ...styles.selectInput, ...errStyle(errors.fromAccount) }} value={fromAccountId} onChange={(e) => setFromAccountId(e.target.value)}>
+              {data.accounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+            <label style={styles.label}>To *</label>
+            <select style={{ ...styles.selectInput, ...errStyle(errors.toAccount || errors.sameAccount) }} value={toAccountId} onChange={(e) => setToAccountId(e.target.value)}>
+              {data.accounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+            {touched && errors.sameAccount && (
+              <div style={styles.errorBox}>
+                <AlertCircle size={15} /> <span>"From" and "To" must be different accounts.</span>
+              </div>
+            )}
+          </>
+        )}
+
+        <label style={styles.label}>Description (optional)</label>
+        <input style={styles.textInput} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
+
+        {touched && hasErrors && (
+          <div style={styles.errorBox}>
+            <AlertCircle size={15} /> <span>Please fill in all required fields (marked with *).</span>
+          </div>
+        )}
+
+        <button style={styles.primaryBtn} onClick={save}>
+          <Check size={16} /> {editingTxn ? "Save changes" : "Add entry"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Styles ---------------- */
+
+const styles = {
+  app: { minHeight: "100%", background: "var(--paper)", color: "var(--ink)", fontFamily: "var(--sans)", position: "relative", paddingBottom: 84 },
+  loadingWrap: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300, background: "var(--paper, #EDE3CC)" },
+  loadingCard: { fontFamily: "Georgia, serif", fontStyle: "italic", color: "#4A5A5C" },
+  header: { display: "flex", alignItems: "center", gap: 10, padding: "16px 16px 12px" },
+  headerBadge: {
+    width: 36, height: 36, borderRadius: "50%", background: "var(--ink)", color: "var(--paper)",
+    display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontWeight: 700, fontSize: 13,
+  },
+  headerTitle: { fontFamily: "Georgia, serif", fontWeight: 700, fontSize: 18, lineHeight: 1.1 },
+  headerSub: { fontSize: 11, color: "var(--ink-soft)", fontStyle: "italic" },
+  main: { padding: "0 14px 14px" },
+  sectionLabel: { fontSize: 11.5, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--ink-soft)", margin: "4px 2px" },
+  card: { background: "var(--card-bg)", border: "1px solid var(--paper-line)", borderRadius: 12, padding: 14 },
+  ledgerCard: {
+    position: "relative", background: "var(--card-bg)", border: "1px solid var(--paper-line)", borderRadius: 14,
+    padding: "22px 18px 16px", overflow: "hidden",
+  },
+  ledgerStitch: {
+    position: "absolute", top: 8, left: 8, right: 8, bottom: 8, border: "1px dashed var(--paper-line)",
+    borderRadius: 8, pointerEvents: "none",
+  },
+  ledgerSeal: {
+    position: "absolute", top: 14, right: 16, width: 34, height: 34, borderRadius: "50%",
+    background: "var(--accent-gold)", color: "#2a1d0a", display: "flex", alignItems: "center", justifyContent: "center",
+    fontFamily: "Georgia, serif", fontWeight: 700, fontSize: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+  },
+  ledgerLabel: { fontSize: 11.5, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: 0.5 },
+  ledgerAmount: { fontFamily: "var(--mono)", fontSize: 30, fontWeight: 700, margin: "4px 0 10px" },
+  ledgerRow: { display: "flex", gap: 18, fontSize: 12.5, fontWeight: 600 },
+  accountRow: { display: "flex", alignItems: "center", gap: 10, background: "var(--card-bg)", border: "1px solid var(--paper-line)", borderRadius: 10, padding: "10px 12px" },
+  accountIconWrap: { width: 34, height: 34, borderRadius: 9, background: "var(--paper)", display: "flex", alignItems: "center", justifyContent: "center" },
+  legendWrap: { display: "flex", flexDirection: "column", gap: 5, marginTop: 6 },
+  legendItem: { display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 },
+  legendDot: { width: 9, height: 9, borderRadius: "50%", flexShrink: 0 },
+  dateHeading: { fontSize: 12, fontWeight: 700, color: "var(--ink-soft)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 },
+  txnRow: { display: "flex", alignItems: "center", gap: 10, background: "var(--card-bg)", border: "1px solid var(--paper-line)", borderRadius: 10, padding: "10px 10px", cursor: "pointer" },
+  txnIcon: { width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  emptyState: { textAlign: "center", padding: "60px 20px", color: "var(--ink-soft)" },
+  fab: {
+    position: "fixed", bottom: 66, left: "50%", transform: "translateX(-50%)", width: 56, height: 56, borderRadius: "50%",
+    background: "var(--ink)", color: "var(--paper)", border: "3px solid var(--paper)", display: "flex", alignItems: "center",
+    justifyContent: "center", boxShadow: "0 3px 10px rgba(0,0,0,0.3)", cursor: "pointer", zIndex: 20,
+  },
+  nav: {
+    position: "fixed", bottom: 0, left: 0, right: 0, height: 62, background: "var(--card-bg)", borderTop: "1px solid var(--paper-line)",
+    display: "flex", alignItems: "center", justifyContent: "space-around", zIndex: 10,
+  },
+  navBtn: { background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", position: "relative", padding: 6, cursor: "pointer" },
+  navDot: { position: "absolute", bottom: -1, width: 4, height: 4, borderRadius: "50%", background: "var(--accent-gold)" },
+  modalOverlay: { position: "fixed", inset: 0, background: "rgba(20,20,15,0.45)", display: "flex", alignItems: "flex-end", zIndex: 30 },
+  modalSheet: { background: "var(--paper)", width: "100%", maxHeight: "88vh", overflowY: "auto", borderRadius: "18px 18px 0 0", padding: 18 },
+  modalHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  typeToggle: { display: "flex", gap: 6, marginBottom: 14, background: "var(--card-bg)", border: "1px solid var(--paper-line)", borderRadius: 10, padding: 4 },
+  typeToggleBtn: { flex: 1, padding: "8px 0", borderRadius: 7, border: "none", fontWeight: 600, fontSize: 12.5, cursor: "pointer" },
+  label: { fontSize: 11.5, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: 0.4, marginTop: 10, display: "block" },
+  textInput: {
+    width: "100%", boxSizing: "border-box", padding: "9px 11px", borderRadius: 8, border: "1px solid var(--paper-line)",
+    background: "var(--card-bg)", fontSize: 14, marginTop: 4, color: "var(--ink)", fontFamily: "var(--sans)",
+  },
+  selectInput: {
+    width: "100%", boxSizing: "border-box", padding: "9px 11px", borderRadius: 8, border: "1px solid var(--paper-line)",
+    background: "var(--card-bg)", fontSize: 14, marginTop: 4, color: "var(--ink)", fontFamily: "var(--sans)",
+  },
+  primaryBtn: {
+    width: "100%", marginTop: 18, padding: "12px 0", borderRadius: 10, border: "none", background: "var(--ink)",
+    color: "var(--paper)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer",
+  },
+  smallBtn: { padding: "6px 10px", borderRadius: 8, border: "none", background: "var(--ink)", color: "var(--paper)", cursor: "pointer", display: "flex" },
+  editRow: { display: "flex", alignItems: "center", gap: 8, padding: "6px 2px", fontSize: 13.5, borderBottom: "1px solid var(--paper-line)" },
+  addRow: { display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" },
+  iconBtnGhost: { background: "none", border: "none", color: "var(--ink-soft)", cursor: "pointer", padding: 4, display: "flex" },
+  collapsibleHeader: { width: "100%", display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", padding: 0, color: "var(--ink)" },
+  budgetInput: { width: 96, padding: "6px 8px", borderRadius: 7, border: "1px solid var(--paper-line)", background: "var(--paper)", fontSize: 13, fontFamily: "var(--mono)" },
+  progressTrack: { height: 7, borderRadius: 4, background: "var(--paper)", overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 4 },
+  errorBox: { display: "flex", alignItems: "flex-start", gap: 6, background: "var(--debit-bg)", color: "var(--debit)", padding: "8px 10px", borderRadius: 8, fontSize: 12.5, marginTop: 8 },
+  importSummary: { fontSize: 13, display: "flex", flexDirection: "column", gap: 3, marginBottom: 10 },
+};
+
+const css = `
+  :root {
+    --paper: #EDE3CC;
+    --paper-line: #C9BB98;
+    --card-bg: #FBF7EC;
+    --ink: #1C2B2E;
+    --ink-soft: #6B6350;
+    --debit: #8B2E28;
+    --debit-bg: #F3E1DE;
+    --credit: #2F5233;
+    --credit-bg: #E2EAE0;
+    --accent-gold: #C99A3E;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  input:focus, select:focus, button:focus-visible {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 1px;
+  }
+  input[type="date"] { font-family: var(--sans); }
+`;

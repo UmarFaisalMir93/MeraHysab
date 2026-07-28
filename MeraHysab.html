@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Mera Hysab</title>
+<style>
+  :root {
+    --paper: #EDE3CC;
+    --paper-line: #C9BB98;
+    --card-bg: #FBF7EC;
+    --ink: #1C2B2E;
+    --ink-soft: #6B6350;
+    --debit: #8B2E28;
+    --debit-bg: #F3E1DE;
+    --credit: #2F5233;
+    --credit-bg: #E2EAE0;
+    --accent-gold: #C99A3E;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+  body { padding-bottom: 84px; -webkit-tap-highlight-color: transparent; }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 1px; }
+  button { font-family: var(--sans); }
+  .icon { width: 1em; height: 1em; display: inline-block; vertical-align: middle; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .header { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px; }
+  .header-badge { width: 36px; height: 36px; border-radius: 50%; background: var(--ink); color: var(--paper); display: flex; align-items: center; justify-content: center; font-family: Georgia, serif; font-weight: 700; font-size: 13px; flex-shrink:0; }
+  .header-title { font-family: Georgia, serif; font-weight: 700; font-size: 18px; line-height: 1.1; }
+  .header-sub { font-size: 11px; color: var(--ink-soft); font-style: italic; }
+  .main { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 16px; }
+  .section-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--ink-soft); margin: 4px 2px; display:flex; justify-content:space-between; }
+  .card { background: var(--card-bg); border: 1px solid var(--paper-line); border-radius: 12px; padding: 14px; }
+  .ledger-card { position: relative; background: var(--card-bg); border: 1px solid var(--paper-line); border-radius: 14px; padding: 22px 18px 16px; overflow: hidden; }
+  .ledger-stitch { position: absolute; top: 8px; left: 8px; right: 8px; bottom: 8px; border: 1px dashed var(--paper-line); border-radius: 8px; pointer-events: none; }
+  .ledger-seal { position: absolute; top: 14px; right: 16px; width: 34px; height: 34px; border-radius: 50%; background: var(--accent-gold); color: #2a1d0a; display: flex; align-items: center; justify-content: center; font-family: Georgia, serif; font-weight: 700; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+  .ledger-label { font-size: 11.5px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.5px; }
+  .ledger-amount { font-family: var(--mono); font-size: 30px; font-weight: 700; margin: 4px 0 10px; }
+  .ledger-row { display: flex; gap: 18px; font-size: 12.5px; font-weight: 600; }
+  .account-row, .txn-row { display: flex; align-items: center; gap: 10px; background: var(--card-bg); border: 1px solid var(--paper-line); border-radius: 10px; padding: 10px 12px; }
+  .txn-row { cursor: pointer; }
+  .account-icon-wrap, .txn-icon { width: 34px; height: 34px; border-radius: 9px; background: var(--paper); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .txn-icon { width: 32px; height: 32px; border-radius: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .date-heading { font-size: 12px; font-weight: 700; color: var(--ink-soft); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--ink-soft); }
+  .fab { position: fixed; bottom: 66px; left: 50%; transform: translateX(-50%); width: 56px; height: 56px; border-radius: 50%; background: var(--ink); color: var(--paper); border: 3px solid var(--paper); display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 10px rgba(0,0,0,0.3); cursor: pointer; z-index: 20; }
+  .fab .icon { width: 26px; height: 26px; }
+  .nav { position: fixed; bottom: 0; left: 0; right: 0; height: 62px; background: var(--card-bg); border-top: 1px solid var(--paper-line); display: flex; align-items: center; justify-content: space-around; z-index: 10; }
+  .nav-btn { background: none; border: none; display: flex; flex-direction: column; align-items: center; position: relative; padding: 6px; cursor: pointer; color: var(--ink-soft); }
+  .nav-btn.active { color: var(--ink); }
+  .nav-btn .icon { width: 20px; height: 20px; }
+  .nav-btn span { font-size: 11px; margin-top: 2px; }
+  .nav-dot { position: absolute; bottom: -1px; width: 4px; height: 4px; border-radius: 50%; background: var(--accent-gold); }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(20,20,15,0.45); display: flex; align-items: flex-end; z-index: 30; }
+  .modal-sheet { background: var(--paper); width: 100%; max-height: 88vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 18px; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .type-toggle { display: flex; gap: 6px; margin-bottom: 14px; background: var(--card-bg); border: 1px solid var(--paper-line); border-radius: 10px; padding: 4px; }
+  .type-toggle-btn { flex: 1; padding: 8px 0; border-radius: 7px; border: none; font-weight: 600; font-size: 12.5px; cursor: pointer; background: transparent; color: var(--ink); }
+  .field-label { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 10px; display: block; }
+  .text-input, .select-input { width: 100%; box-sizing: border-box; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--paper-line); background: var(--card-bg); font-size: 14px; margin-top: 4px; color: var(--ink); font-family: var(--sans); }
+  .text-input.err, .select-input.err { border: 1.5px solid var(--debit); }
+  .primary-btn { width: 100%; margin-top: 18px; padding: 12px 0; border-radius: 10px; border: none; background: var(--ink); color: var(--paper); font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+  .small-btn { padding: 6px 10px; border-radius: 8px; border: none; background: var(--ink); color: var(--paper); cursor: pointer; display: flex; }
+  .edit-row { display: flex; align-items: center; gap: 8px; padding: 6px 2px; font-size: 13.5px; border-bottom: 1px solid var(--paper-line); }
+  .icon-btn-ghost { background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 4px; display: flex; }
+  .collapsible-header { width: 100%; display: flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; padding: 0; color: var(--ink); }
+  .budget-input { width: 96px; padding: 6px 8px; border-radius: 7px; border: 1px solid var(--paper-line); background: var(--paper); font-size: 13px; font-family: var(--mono); }
+  .progress-track { height: 7px; border-radius: 4px; background: var(--paper); overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; }
+  .error-box { display: flex; align-items: flex-start; gap: 6px; background: var(--debit-bg); color: var(--debit); padding: 8px 10px; border-radius: 8px; font-size: 12.5px; margin-top: 8px; }
+  .import-summary { font-size: 13px; display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+"use strict";
+
+/* ============== Icons (inline SVG, no dependencies) ============== */
+const ICONS = {
+  home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+  list: '<circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/><path d="M9 6h11M9 12h11M9 18h11"/>',
+  plus: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+  wallet: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14" r="1"/>',
+  upload: '<path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/>',
+  download: '<path d="M12 4v12M8 12l4 4 4-4"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 00-2-1.2L14 3h-4l-.6 2.6a7 7 0 00-2 1.2l-2.3-.9-2 3.4 2 1.5a7 7 0 000 2.4l-2 1.5 2 3.4 2.3-.9a7 7 0 002 1.2L10 21h4l.6-2.6a7 7 0 002-1.2l2.3.9 2-3.4-2-1.5c.07-.4.1-.8.1-1.2z"/>',
+  swap: '<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  check: '<path d="M5 12l5 5L19 7"/>',
+  chevronDown: '<path d="M6 9l6 6 6-6"/>',
+  chevronRight: '<path d="M9 6l6 6-6 6"/>',
+  piggy: '<path d="M4 12a6 6 0 016-6h3a5 5 0 015 5v1l2 1-2 1v1a2 2 0 01-2 2h-1v2H9v-2a6 6 0 01-5-6z"/><circle cx="15" cy="10" r="0.6" fill="currentColor"/>',
+  sheet: '<rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+  alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v4"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/>',
+  bank: '<path d="M4 10l8-6 8 6"/><path d="M5 10v9M9 10v9M15 10v9M19 10v9M3 19h18"/>',
+  cash: '<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
+  person: '<circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0116 0"/>',
+  arrowUpRight: '<path d="M7 17L17 7M8 7h9v9"/>',
+  arrowDownRight: '<path d="M7 7l10 10M17 8v9H8"/>',
+  save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h8V4M8 14h8v6H8z"/>',
+  pencil: '<path d="M4 20l1-4L16 5l3 3-11 11z"/>'
+};
+function icon(name, size) {
+  size = size || 17;
+  return '<svg class="icon" style="width:' + size + 'px;height:' + size + 'px" viewBox="0 0 24 24">' + (ICONS[name] || "") + "</svg>";
+}
+
+/* ============== Data model & storage ============== */
+const STORAGE_KEY = "mera-hysab-offline-v1";
+const ACCOUNT_TYPES = ["Cash", "Bank", "Savings", "Person"];
+const ACCOUNT_ICON = { Cash: "cash", Bank: "bank", Savings: "piggy", Person: "person" };
+const PALETTE = ["#8B2E28", "#B8862E", "#2F5233", "#4A5A5C", "#6E4A2E", "#3E6B6F", "#7A4A6B", "#A65D2E"];
+
+const DEFAULT_ACCOUNTS = [
+  { id: "acc-cash", name: "Cash", type: "Cash", opening: 0 },
+  { id: "acc-bank", name: "Bank", type: "Bank", opening: 0 },
+];
+const DEFAULT_CATEGORIES = [
+  { id: "cat-salary", name: "Salary", kind: "income" },
+  { id: "cat-freelance", name: "Freelance", kind: "income" },
+  { id: "cat-other-income", name: "Other Income", kind: "income" },
+  { id: "cat-food", name: "Food & Drink", kind: "expense" },
+  { id: "cat-transport", name: "Transport", kind: "expense" },
+  { id: "cat-shopping", name: "Shopping", kind: "expense" },
+  { id: "cat-bills", name: "Bills & Utilities", kind: "expense" },
+  { id: "cat-rent", name: "Rent Paid", kind: "expense" },
+  { id: "cat-entertainment", name: "Entertainment", kind: "expense" },
+  { id: "cat-medical", name: "Medical", kind: "expense" },
+  { id: "cat-personal", name: "Personal", kind: "expense" },
+  { id: "cat-other-expense", name: "Other Expenses", kind: "expense" },
+];
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function fmt(n) {
+  const neg = n < 0;
+  const v = Math.abs(Math.round(n)).toLocaleString("en-US");
+  return (neg ? "-Rs " : "Rs ") + v;
+}
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function monthKey(dateStr) { return (dateStr || "").slice(0, 7); }
+
+function defaultData() {
+  return {
+    accounts: DEFAULT_ACCOUNTS.map((a) => Object.assign({}, a)),
+    categories: DEFAULT_CATEGORIES.map((c) => Object.assign({}, c)),
+    transactions: [],
+    budgets: [],
+    bankDirectory: ["Bank"],
+    personDirectory: [],
+  };
+}
+function withDefaults(d) {
+  d = d || {};
+  return {
+    accounts: d.accounts || [],
+    categories: d.categories || [],
+    transactions: d.transactions || [],
+    budgets: d.budgets || [],
+    bankDirectory: d.bankDirectory || [],
+    personDirectory: d.personDirectory || [],
+  };
+}
+
+let state = loadData();
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? withDefaults(JSON.parse(raw)) : defaultData();
+  } catch (e) {
+    return defaultData();
+  }
+}
+function saveData() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* storage full or blocked */ }
+}
+function update(mutator) {
+  state = mutator(state);
+  saveData();
+  render();
+}
+
+function accountBalance(acc, transactions) {
+  let bal = acc.opening || 0;
+  for (const t of transactions) {
+    if (t.type === "transfer") {
+      if (t.fromAccountId === acc.id) bal -= t.amount;
+      if (t.toAccountId === acc.id) bal += t.amount;
+    } else if (t.accountId === acc.id) {
+      bal += t.type === "income" ? t.amount : -t.amount;
+    }
+  }
+  return bal;
+}
+
+/* ============== Simple SVG charts (no chart library) ============== */
+function polarToCartesian(cx, cy, r, angleDeg) {
+  const a = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+}
+function donutSlicePath(cx, cy, rOuter, rInner, startAngle, endAngle) {
+  const so = polarToCartesian(cx, cy, rOuter, endAngle);
+  const eo = polarToCartesian(cx, cy, rOuter, startAngle);
+  const si = polarToCartesian(cx, cy, rInner, endAngle);
+  const ei = polarToCartesian(cx, cy, rInner, startAngle);
+  const largeArc = endAngle - startAngle <= 180 ? 0 : 1;
+  return ["M", so.x, so.y, "A", rOuter, rOuter, 0, largeArc, 0, eo.x, eo.y,
+          "L", ei.x, ei.y, "A", rInner, rInner, 0, largeArc, 1, si.x, si.y, "Z"].join(" ");
+}
+function buildPieSVG(pairs) {
+  const total = pairs.reduce((s, p) => s + p.value, 0);
+  if (total <= 0) return "";
+  const cx = 100, cy = 100, rOuter = 78, rInner = 46;
+  let angle = 0;
+  let paths = "";
+  pairs.forEach((p, i) => {
+    const slice = (p.value / total) * 360;
+    const start = angle, end = angle + slice;
+    paths += '<path d="' + donutSlicePath(cx, cy, rOuter, rInner, start, end) + '" fill="' + PALETTE[i % PALETTE.length] + '"/>';
+    angle = end;
+  });
+  return '<svg viewBox="0 0 200 200" style="width:100%;max-width:220px;display:block;margin:0 auto;">' + paths + "</svg>";
+}
+function buildBarSVG(last6) {
+  const w = 300, h = 150, padBottom = 18, gap = 10, groupW = (w - gap * 7) / 6;
+  const max = Math.max(1, ...last6.map((m) => Math.max(m.income, m.expense)));
+  let bars = "";
+  last6.forEach((m, i) => {
+    const gx = gap + i * (groupW + gap);
+    const barW = groupW / 2 - 2;
+    const incH = (m.income / max) * (h - padBottom - 6);
+    const expH = (m.expense / max) * (h - padBottom - 6);
+    bars += '<rect x="' + gx + '" y="' + (h - padBottom - incH) + '" width="' + barW + '" height="' + incH + '" rx="2" fill="#2F5233"/>';
+    bars += '<rect x="' + (gx + barW + 2) + '" y="' + (h - padBottom - expH) + '" width="' + barW + '" height="' + expH + '" rx="2" fill="#8B2E28"/>';
+    bars += '<text x="' + (gx + groupW / 2) + '" y="' + (h - 4) + '" font-size="9" fill="#6B6350" text-anchor="middle">' + m.month + "</text>";
+  });
+  return '<svg viewBox="0 0 ' + w + " " + h + '" style="width:100%;display:block;">' + bars + "</svg>";
+}
+
+/* ============== CSV parsing (no library) ============== */
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = "", inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i], next = text[i + 1];
+    if (inQuotes) {
+      if (c === '"' && next === '"') { field += '"'; i++; }
+      else if (c === '"') { inQuotes = false; }
+      else { field += c; }
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ",") { row.push(field); field = ""; }
+      else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+      else if (c === "\r") { /* skip */ }
+      else field += c;
+    }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  if (rows.length === 0) return [];
+  const header = rows[0].map((h) => h.trim());
+  return rows.slice(1).filter((r) => r.length > 1 || (r[0] || "").trim() !== "").map((r) => {
+    const obj = {};
+    header.forEach((h, i) => { obj[h] = r[i] !== undefined ? r[i] : ""; });
+    return obj;
+  });
+}
+
+function parseDDMMYYYY(s) {
+  const parts = (s || "").trim().split("/");
+  if (parts.length !== 3) return null;
+  const d = parseInt(parts[0], 10), m = parseInt(parts[1], 10), y = parseInt(parts[2], 10);
+  if (!d || !m || !y) return null;
+  return y + "-" + String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+}
+
+function buildImportPlan(rows, data) {
+  const accountsByName = {}; data.accounts.forEach((a) => { accountsByName[a.name.toLowerCase()] = a; });
+  const categoriesByName = {}; data.categories.forEach((c) => { categoriesByName[c.name.toLowerCase()] = c; });
+  const newAccounts = [], newCategories = [], transactions = [], skipped = [];
+
+  function getAccount(name) {
+    const key = (name || "").trim().toLowerCase();
+    if (!key) return null;
+    if (accountsByName[key]) return accountsByName[key];
+    const existing = newAccounts.find((a) => a.name.toLowerCase() === key);
+    if (existing) return existing;
+    const acc = { id: uid(), name: name.trim(), type: "Person", opening: 0 };
+    newAccounts.push(acc); accountsByName[key] = acc;
+    return acc;
+  }
+  function getCategory(name, kind) {
+    const key = (name || "").trim().toLowerCase();
+    if (!key || key === "no category") return null;
+    if (categoriesByName[key]) return categoriesByName[key];
+    const existing = newCategories.find((c) => c.name.toLowerCase() === key);
+    if (existing) return existing;
+    const cat = { id: uid(), name: name.trim(), kind };
+    newCategories.push(cat); categoriesByName[key] = cat;
+    return cat;
+  }
+
+  const used = new Array(rows.length).fill(false);
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const vtype = (r["Voucher Type"] || "").trim();
+    if (vtype !== "Transfer" || used[i]) continue;
+    const date = parseDDMMYYYY(r["Voucher Date"]);
+    const amt = parseFloat(r["Voucher Amount"]);
+    if (!date || isNaN(amt)) { skipped.push(r); used[i] = true; continue; }
+    let pairIdx = -1;
+    for (let j = i + 1; j < rows.length && j <= i + 4; j++) {
+      if (used[j]) continue;
+      const r2 = rows[j];
+      if ((r2["Voucher Type"] || "").trim() !== "Transfer") break;
+      const amt2 = parseFloat(r2["Voucher Amount"]);
+      if (parseDDMMYYYY(r2["Voucher Date"]) === date && Math.abs(amt + amt2) < 0.01) { pairIdx = j; break; }
+    }
+    if (pairIdx === -1) { skipped.push(r); used[i] = true; continue; }
+    const r2 = rows[pairIdx];
+    used[i] = true; used[pairIdx] = true;
+    const fromRow = amt < 0 ? r : r2, toRow = amt < 0 ? r2 : r;
+    const fromAcc = getAccount(fromRow["Account Name"]), toAcc = getAccount(toRow["Account Name"]);
+    if (!fromAcc || !toAcc) { skipped.push(r); continue; }
+    transactions.push({
+      id: uid(), type: "transfer", date, amount: Math.abs(amt),
+      fromAccountId: fromAcc.id, toAccountId: toAcc.id,
+      description: (fromRow["Description"] || toRow["Description"] || "").trim(),
+    });
+  }
+
+  rows.forEach((r, i) => {
+    if (used[i]) return;
+    const vtype = (r["Voucher Type"] || "").trim();
+    const date = parseDDMMYYYY(r["Voucher Date"]);
+    const amt = parseFloat(r["Voucher Amount"]);
+    if (!date || isNaN(amt) || (vtype !== "Income" && vtype !== "Expense")) { skipped.push(r); return; }
+    const acc = getAccount(r["Account Name"]);
+    if (!acc) { skipped.push(r); return; }
+    const kind = vtype === "Income" ? "income" : "expense";
+    const cat = getCategory(r["Category Name"], kind);
+    transactions.push({
+      id: uid(), type: kind, date, amount: Math.abs(amt),
+      accountId: acc.id, categoryId: cat ? cat.id : null,
+      description: (r["Description"] || "").trim(),
+    });
+  });
+
+  return { newAccounts, newCategories, transactions, skipped };
+}
+
+/* ============== App state (UI) ============== */
+let currentTab = "dashboard";
+let modalState = null; // { editingTxn } or null
+let morePanelOpen = "accounts";
+let importPreview = null;
+let importError = "";
+let backupPending = null;
+let backupError = "";
+let justExported = false;
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* ============== Render ============== */
+function render() {
+  const app = document.getElementById("app");
+  app.innerHTML =
+    '<div class="header">' +
+      '<div class="header-badge">MH</div>' +
+      '<div><div class="header-title">Mera Hysab</div><div class="header-sub">your ledger, your rules</div></div>' +
+    "</div>" +
+    '<div class="main" id="main">' + renderTab() + "</div>" +
+    '<button class="fab" id="fabBtn" aria-label="Add transaction">' + icon("plus", 26) + "</button>" +
+    '<nav class="nav">' +
+      navBtn("home", "Home", "dashboard") +
+      navBtn("list", "Ledger", "transactions") +
+      '<div style="width:56px"></div>' +
+      navBtn("piggy", "Budgets", "budgets") +
+      navBtn("settings", "More", "more") +
+    "</nav>" +
+    (modalState ? renderModal() : "");
+
+  document.getElementById("fabBtn").onclick = () => { modalState = { editingTxn: null }; render(); };
+  document.querySelectorAll(".nav-btn").forEach((btn) => {
+    btn.onclick = () => { currentTab = btn.getAttribute("data-tab"); render(); };
+  });
+  wireTabEvents();
+  if (modalState) wireModalEvents();
+}
+function navBtn(iconName, label, tab) {
+  const active = currentTab === tab;
+  return '<button class="nav-btn' + (active ? " active" : "") + '" data-tab="' + tab + '">' +
+    icon(iconName, 20) + "<span>" + label + "</span>" + (active ? '<div class="nav-dot"></div>' : "") + "</button>";
+}
+
+function renderTab() {
+  if (currentTab === "dashboard") return renderDashboard();
+  if (currentTab === "transactions") return renderTransactions();
+  if (currentTab === "budgets") return renderBudgets();
+  if (currentTab === "more") return renderMore();
+  return "";
+}
+function wireTabEvents() {
+  if (currentTab === "transactions") wireTransactionEvents();
+  if (currentTab === "budgets") wireBudgetEvents();
+  if (currentTab === "more") wireMoreEvents();
+}
+
+/* ---------------- Dashboard ---------------- */
+function renderDashboard() {
+  const netWorth = state.accounts.reduce((s, a) => s + accountBalance(a, state.transactions), 0);
+  const thisMonth = monthKey(todayStr());
+  const monthTxns = state.transactions.filter((t) => monthKey(t.date) === thisMonth);
+  const income = monthTxns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const expense = monthTxns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+
+  const catMap = {}; state.categories.forEach((c) => { catMap[c.id] = c.name; });
+  const expenseByCat = {};
+  monthTxns.filter((t) => t.type === "expense").forEach((t) => {
+    const name = catMap[t.categoryId] || "Uncategorized";
+    expenseByCat[name] = (expenseByCat[name] || 0) + t.amount;
+  });
+  const pieData = Object.entries(expenseByCat).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+
+  const now = new Date(); const last6 = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = d.toISOString().slice(0, 7);
+    const label = d.toLocaleDateString("en-US", { month: "short" });
+    const inc = state.transactions.filter((t) => t.type === "income" && monthKey(t.date) === key).reduce((s, t) => s + t.amount, 0);
+    const exp = state.transactions.filter((t) => t.type === "expense" && monthKey(t.date) === key).reduce((s, t) => s + t.amount, 0);
+    last6.push({ month: label, income: inc, expense: exp });
+  }
+
+  let accountsHtml = "";
+  ACCOUNT_TYPES.forEach((t) => {
+    const group = state.accounts.filter((a) => a.type === t);
+    if (group.length === 0) return;
+    const groupTotal = group.reduce((s, a) => s + accountBalance(a, state.transactions), 0);
+    accountsHtml += '<div class="section-label"><span>' + t + (t === "Person" ? " (owed / owing)" : "s") + "</span><span style=\"font-family:var(--mono)\">" + fmt(groupTotal) + "</span></div>";
+    accountsHtml += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:6px;">';
+    group.forEach((a) => {
+      const bal = accountBalance(a, state.transactions);
+      accountsHtml += '<div class="account-row"><div class="account-icon-wrap">' + icon(ACCOUNT_ICON[a.type] || "wallet", 17) +
+        '</div><div style="flex:1"><div style="font-weight:600;font-size:14px">' + esc(a.name) + "</div></div>" +
+        '<div style="font-family:var(--mono);font-weight:600;color:' + (bal < 0 ? "var(--debit)" : "var(--ink)") + '">' + fmt(bal) + "</div></div>";
+    });
+    accountsHtml += "</div>";
+  });
+
+  let pieHtml = "";
+  if (pieData.length > 0) {
+    let legend = "";
+    pieData.slice(0, 6).forEach((p, i) => {
+      legend += '<div class="legend-item"><span class="legend-dot" style="background:' + PALETTE[i % PALETTE.length] + '"></span><span style="flex:1">' + esc(p.name) + '</span><span style="font-family:var(--mono)">' + fmt(p.value) + "</span></div>";
+    });
+    pieHtml = '<div class="card"><div class="section-label"><span>This month\u2019s spending</span></div>' + buildPieSVG(pieData) +
+      '<div style="display:flex;flex-direction:column;gap:5px;margin-top:6px;">' + legend + "</div></div>";
+  }
+
+  const barHtml = '<div class="card"><div class="section-label"><span>Last 6 months</span></div>' + buildBarSVG(last6) +
+    '<div style="display:flex;gap:14px;font-size:11px;color:var(--ink-soft);margin-top:4px;justify-content:center;">' +
+    '<span><span style="display:inline-block;width:8px;height:8px;background:#2F5233;border-radius:2px;margin-right:4px;"></span>Income</span>' +
+    '<span><span style="display:inline-block;width:8px;height:8px;background:#8B2E28;border-radius:2px;margin-right:4px;"></span>Expense</span></div></div>';
+
+  return '<div class="ledger-card"><div class="ledger-stitch"></div><div class="ledger-seal">MH</div>' +
+    '<div class="ledger-label">Net worth, across all accounts</div>' +
+    '<div class="ledger-amount">' + fmt(netWorth) + "</div>" +
+    '<div class="ledger-row"><span style="color:var(--credit);display:flex;align-items:center;gap:4px">' + icon("arrowDownRight", 14) + fmt(income) + " in</span>" +
+    '<span style="color:var(--debit);display:flex;align-items:center;gap:4px">' + icon("arrowUpRight", 14) + fmt(expense) + " out</span></div></div>" +
+    accountsHtml + pieHtml + barHtml;
+}
+
+/* ---------------- Transactions ---------------- */
+function renderTransactions() {
+  const catMap = {}; state.categories.forEach((c) => { catMap[c.id] = c.name; });
+  const accMap = {}; state.accounts.forEach((a) => { accMap[a.id] = a.name; });
+  const sorted = state.transactions.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+  if (sorted.length === 0) {
+    return '<div class="empty-state">' + icon("sheet", 28) + '<div style="margin-top:8px;font-weight:600">No entries yet</div>' +
+      '<div style="font-size:13px;color:var(--ink-soft)">Tap + to add your first transaction, or import a CSV from More.</div></div>';
+  }
+
+  const groups = {};
+  sorted.forEach((t) => { (groups[t.date] = groups[t.date] || []).push(t); });
+
+  let html = "";
+  Object.keys(groups).forEach((date) => {
+    const label = new Date(date).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    html += '<div><div class="date-heading">' + label + '</div><div style="display:flex;flex-direction:column;gap:6px;">';
+    groups[date].forEach((t) => {
+      const isTransfer = t.type === "transfer";
+      const title = isTransfer ? (esc(accMap[t.fromAccountId] || "?") + " \u2192 " + esc(accMap[t.toAccountId] || "?"))
+        : esc(t.description || catMap[t.categoryId] || "Untitled");
+      const sub = isTransfer ? "Transfer" : (esc(catMap[t.categoryId] || "No category") + " \u00b7 " + esc(accMap[t.accountId] || "?"));
+      const amtColor = t.type === "income" ? "var(--credit)" : t.type === "expense" ? "var(--debit)" : "var(--ink)";
+      const sign = t.type === "expense" ? "-" : t.type === "income" ? "+" : "";
+      const iconName = t.type === "income" ? "arrowDownRight" : t.type === "expense" ? "arrowUpRight" : "swap";
+      const iconColor = t.type === "income" ? "var(--credit)" : t.type === "expense" ? "var(--debit)" : "var(--ink-soft)";
+      const iconBg = t.type === "income" ? "var(--credit-bg)" : t.type === "expense" ? "var(--debit-bg)" : "var(--paper-line)";
+      html += '<div class="txn-row" data-edit-id="' + t.id + '">' +
+        '<div class="txn-icon" style="background:' + iconBg + ';color:' + iconColor + '">' + icon(iconName, 16) + "</div>" +
+        '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + title + '</div>' +
+        '<div style="font-size:11px;color:var(--ink-soft)">' + sub + "</div></div>" +
+        '<div style="font-family:var(--mono);font-weight:700;color:' + amtColor + '">' + sign + fmt(t.amount) + "</div>" +
+        '<button class="icon-btn-ghost" data-del-id="' + t.id + '" aria-label="Delete">' + icon("trash", 15) + "</button></div>";
+    });
+    html += "</div></div>";
+  });
+  return html;
+}
+function wireTransactionEvents() {
+  document.querySelectorAll("[data-del-id]").forEach((btn) => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute("data-del-id");
+      update((d) => Object.assign({}, d, { transactions: d.transactions.filter((t) => t.id !== id) }));
+    };
+  });
+  document.querySelectorAll("[data-edit-id]").forEach((row) => {
+    row.onclick = () => {
+      const id = row.getAttribute("data-edit-id");
+      const t = state.transactions.find((x) => x.id === id);
+      modalState = { editingTxn: t || null };
+      render();
+    };
+  });
+}
+
+/* ---------------- Budgets ---------------- */
+function renderBudgets() {
+  const thisMonth = monthKey(todayStr());
+  const expenseCats = state.categories.filter((c) => c.kind === "expense");
+  const spendByCategory = (catId) => state.transactions
+    .filter((t) => t.type === "expense" && t.categoryId === catId && monthKey(t.date) === thisMonth)
+    .reduce((s, t) => s + t.amount, 0);
+  const budgetFor = (catId) => {
+    const b = state.budgets.find((b) => b.categoryId === catId && b.month === thisMonth);
+    return b ? b.amount : 0;
+  };
+
+  const monthLabel = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  let html = '<div class="section-label"><span>Budgets for ' + monthLabel + "</span></div>";
+  expenseCats.forEach((c) => {
+    const budget = budgetFor(c.id);
+    const spent = spendByCategory(c.id);
+    const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
+    const over = budget > 0 && spent > budget;
+    html += '<div class="card" style="margin-bottom:10px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+      '<div style="font-weight:600;font-size:14px">' + esc(c.name) + "</div>" +
+      '<input class="budget-input" type="number" placeholder="Set budget" data-budget-cat="' + c.id + '" value="' + (budget || "") + '" />' +
+      "</div>";
+    if (budget > 0) {
+      html += '<div class="progress-track"><div class="progress-fill" style="width:' + pct + "%;background:" + (over ? "var(--debit)" : "var(--credit)") + ';"></div></div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft);margin-top:4px;">' +
+        "<span>" + fmt(spent) + " spent</span><span>" + (over ? "over by " + fmt(spent - budget) : fmt(budget - spent) + " left") + "</span></div>";
+    }
+    html += "</div>";
+  });
+  return html;
+}
+function wireBudgetEvents() {
+  document.querySelectorAll("[data-budget-cat]").forEach((input) => {
+    input.onblur = () => {
+      const catId = input.getAttribute("data-budget-cat");
+      const thisMonth = monthKey(todayStr());
+      const amt = Number(input.value) || 0;
+      update((d) => {
+        const others = d.budgets.filter((b) => !(b.categoryId === catId && b.month === thisMonth));
+        const budgets = amt > 0 ? others.concat([{ categoryId: catId, month: thisMonth, amount: amt }]) : others;
+        return Object.assign({}, d, { budgets });
+      });
+    };
+  });
+}
+
+/* ---------------- More: Accounts / Categories / Import / Backup ---------------- */
+function renderMore() {
+  return collapsible("accounts", "wallet", "Accounts", renderAccountsEditor()) +
+    collapsible("categories", "list", "Categories", renderCategoriesEditor()) +
+    collapsible("import", "upload", "Import from CSV", renderImportPanel()) +
+    collapsible("backup", "save", "Backup & Restore", renderBackupPanel());
+}
+function collapsible(key, iconName, title, innerHtml) {
+  const open = morePanelOpen === key;
+  return '<div class="card"><button class="collapsible-header" data-toggle="' + key + '">' + icon(iconName, 17) +
+    '<span style="flex:1;text-align:left;font-weight:600;font-size:14px">' + title + "</span>" +
+    icon(open ? "chevronDown" : "chevronRight", 17) + "</button>" +
+    (open ? '<div style="margin-top:10px;">' + innerHtml + "</div>" : "") + "</div>";
+}
+
+let acctFormType = "Bank";
+let acctFormPickMode = null; // computed lazily
+let acctFormName = "";
+let acctFormExisting = "";
+let acctFormOpening = "";
+let acctEditingId = null; // null = "add new" mode; otherwise the account id being edited
+
+function renderAccountsEditor() {
+  if (acctFormPickMode === null) {
+    const dir = acctFormType === "Bank" ? state.bankDirectory : acctFormType === "Person" ? state.personDirectory : [];
+    acctFormPickMode = dir.length > 0 ? "existing" : "new";
+    acctFormExisting = dir[0] || "";
+  }
+  const isEditing = acctEditingId !== null;
+  let html = "";
+  ACCOUNT_TYPES.forEach((t) => {
+    const group = state.accounts.filter((a) => a.type === t);
+    if (group.length === 0) return;
+    html += '<div style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;margin:6px 0 2px;">' + t + "</div>";
+    group.forEach((a) => {
+      html += '<div class="edit-row"><span style="flex:1">' + esc(a.name) + '</span>' +
+        '<button class="icon-btn-ghost" data-edit-acc="' + a.id + '">' + icon("pencil", 14) + "</button>" +
+        '<button class="icon-btn-ghost" data-del-acc="' + a.id + '">' + icon("trash", 14) + "</button></div>";
+    });
+  });
+
+  const usesDirectory = !isEditing && (acctFormType === "Bank" || acctFormType === "Person");
+  const directory = acctFormType === "Bank" ? state.bankDirectory : acctFormType === "Person" ? state.personDirectory : [];
+
+  html += '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--paper-line);">' +
+    '<div style="font-weight:600;font-size:13px;margin-bottom:6px;">' + (isEditing ? "Edit account" : "Add a new account") + "</div>" +
+    '<label class="field-label">Account type</label>' +
+    '<select class="select-input" id="acctType">' + ACCOUNT_TYPES.map((t) => '<option value="' + t + '"' + (t === acctFormType ? " selected" : "") + ">" + t + "</option>").join("") + "</select>";
+
+  if (usesDirectory && directory.length > 0) {
+    html += '<div class="type-toggle">' +
+      '<button class="type-toggle-btn" id="acctPickExisting" style="background:' + (acctFormPickMode === "existing" ? "var(--ink)" : "transparent") + ";color:" + (acctFormPickMode === "existing" ? "#fff" : "var(--ink)") + ';">Choose existing</button>' +
+      '<button class="type-toggle-btn" id="acctPickNew" style="background:' + (acctFormPickMode === "new" ? "var(--ink)" : "transparent") + ";color:" + (acctFormPickMode === "new" ? "#fff" : "var(--ink)") + ';">Add new ' + acctFormType.toLowerCase() + "</button></div>";
+  }
+
+  html += '<label class="field-label">' + (acctFormType === "Bank" ? "Bank name" : acctFormType === "Person" ? "Person\u2019s name" : "Account name") + "</label>";
+  if (usesDirectory && acctFormPickMode === "existing") {
+    html += '<select class="select-input" id="acctExisting">' + directory.map((n) => '<option value="' + esc(n) + '"' + (n === acctFormExisting ? " selected" : "") + ">" + esc(n) + "</option>").join("") + "</select>";
+  } else {
+    html += '<input class="text-input" id="acctName" placeholder="' + (acctFormType === "Bank" ? "e.g. Bank Alfalah" : acctFormType === "Person" ? "e.g. Imran Jameel" : "Account name") + '" value="' + esc(acctFormName) + '" />';
+  }
+
+  html += '<label class="field-label">Opening balance</label>' +
+    '<input class="text-input" type="number" id="acctOpening" placeholder="0" value="' + esc(acctFormOpening) + '" />' +
+    '<div style="display:flex;gap:8px;margin-top:12px;">' +
+    '<button class="primary-btn" id="acctAddBtn">' + icon(isEditing ? "check" : "plus", 16) + " " + (isEditing ? "Save changes" : "Add " + acctFormType + " account") + "</button>" +
+    (isEditing ? '<button class="primary-btn" id="acctCancelBtn" style="background:var(--ink-soft);">' + icon("x", 16) + " Cancel</button>" : "") +
+    "</div></div>";
+
+  return html;
+}
+
+function renderCategoriesEditor() {
+  let html = '<div style="font-size:12px;font-weight:700;color:var(--credit);margin-bottom:4px;">Income</div>';
+  state.categories.filter((c) => c.kind === "income").forEach((c) => {
+    html += '<div class="edit-row"><span style="flex:1">' + esc(c.name) + '</span><button class="icon-btn-ghost" data-del-cat="' + c.id + '">' + icon("trash", 14) + "</button></div>";
+  });
+  html += '<div style="font-size:12px;font-weight:700;color:var(--debit);margin:10px 0 4px;">Expense</div>';
+  state.categories.filter((c) => c.kind === "expense").forEach((c) => {
+    html += '<div class="edit-row"><span style="flex:1">' + esc(c.name) + '</span><button class="icon-btn-ghost" data-del-cat="' + c.id + '">' + icon("trash", 14) + "</button></div>";
+  });
+  html += '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">' +
+    '<input class="text-input" id="catName" placeholder="Category name" style="flex:2;min-width:120px;" />' +
+    '<select class="select-input" id="catKind" style="flex:1;min-width:100px;"><option value="expense">Expense</option><option value="income">Income</option></select>' +
+    '<button class="small-btn" id="catAddBtn">' + icon("plus", 16) + "</button></div>";
+  return html;
+}
+
+function renderImportPanel() {
+  let html = '<p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:8px;">' +
+    "Upload a CSV with columns: <b>Voucher Type</b> (Income/Expense/Transfer), <b>Voucher Date</b> (DD/MM/YYYY), <b>Voucher Amount</b>, <b>Description</b>, <b>Category Name</b>, <b>Account Name</b>. " +
+    'Any account name not already in your list gets created as a "Person" type account by default \u2014 if one is actually a Bank or Cash account, delete it afterward and re-add it with the right type. Unknown categories are created automatically too.</p>' +
+    '<input type="file" accept=".csv" id="csvFileInput" style="font-size:13px;" />';
+  if (importError) html += '<div class="error-box">' + icon("alert", 15) + "<span>" + esc(importError) + "</span></div>";
+  if (importPreview) {
+    html += '<div style="margin-top:12px;"><div class="import-summary"><div>' + importPreview.transactions.length + " transactions ready to import</div>" +
+      '<div style="color:var(--ink-soft)">' + importPreview.newAccounts.length + " new account(s), " + importPreview.newCategories.length + " new categor" + (importPreview.newCategories.length === 1 ? "y" : "ies") + "</div>";
+    if (importPreview.skipped.length > 0) {
+      html += '<div style="color:var(--debit)">' + importPreview.skipped.length + " row(s) skipped (unpaired transfer or unreadable row)</div>";
+    }
+    html += '</div><button class="primary-btn" id="csvConfirmBtn">' + icon("check", 16) + " Import " + importPreview.transactions.length + " transactions</button></div>";
+  }
+  return html;
+}
+
+function renderBackupPanel() {
+  let html = '<p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:8px;">' +
+    "Download a complete copy of your accounts, categories, transactions, and budgets. Keep it somewhere safe. You can restore from it any time, on any device.</p>" +
+    '<button class="primary-btn" id="backupExportBtn">' + icon("download", 16) + " " + (justExported ? "Downloaded \u2713" : "Download backup (.json)") + "</button>" +
+    '<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--paper-line);">' +
+    '<div style="font-weight:600;font-size:13px;margin-bottom:8px;">Restore from a backup file</div>' +
+    '<input type="file" accept=".json,application/json" id="backupFileInput" style="font-size:13px;" />';
+  if (backupError) html += '<div class="error-box">' + icon("alert", 15) + "<span>" + esc(backupError) + "</span></div>";
+  if (backupPending) {
+    html += '<div style="margin-top:10px;"><div class="import-summary"><div style="color:var(--debit);font-weight:700;">This replaces everything currently in the app with the backup:</div>' +
+      "<div>" + backupPending.accounts.length + " accounts \u00b7 " + backupPending.categories.length + " categories \u00b7 " + backupPending.transactions.length + " transactions \u00b7 " + backupPending.budgets.length + " budgets</div></div>" +
+      '<div style="display:flex;gap:8px;"><button class="primary-btn" id="backupRestoreBtn" style="background:var(--debit);">' + icon("check", 16) + " Restore this backup</button>" +
+      '<button class="primary-btn" id="backupCancelBtn" style="background:var(--ink-soft);">' + icon("x", 16) + " Cancel</button></div></div>";
+  }
+  html += "</div>";
+  return html;
+}
+
+function wireMoreEvents() {
+  document.querySelectorAll("[data-toggle]").forEach((btn) => {
+    btn.onclick = () => { morePanelOpen = morePanelOpen === btn.getAttribute("data-toggle") ? "" : btn.getAttribute("data-toggle"); render(); };
+  });
+
+  if (morePanelOpen === "accounts") {
+    const typeSel = document.getElementById("acctType");
+    if (typeSel) typeSel.onchange = () => {
+      acctFormType = typeSel.value;
+      const dir = acctFormType === "Bank" ? state.bankDirectory : acctFormType === "Person" ? state.personDirectory : [];
+      acctFormPickMode = dir.length > 0 ? "existing" : "new";
+      acctFormExisting = dir[0] || "";
+      if (acctEditingId === null) acctFormName = "";
+      render();
+    };
+    const pickExisting = document.getElementById("acctPickExisting");
+    if (pickExisting) pickExisting.onclick = () => { acctFormPickMode = "existing"; render(); };
+    const pickNew = document.getElementById("acctPickNew");
+    if (pickNew) pickNew.onclick = () => { acctFormPickMode = "new"; render(); };
+    const nameInput = document.getElementById("acctName");
+    if (nameInput) nameInput.oninput = () => { acctFormName = nameInput.value; };
+    const existingSel = document.getElementById("acctExisting");
+    if (existingSel) existingSel.onchange = () => { acctFormExisting = existingSel.value; };
+    const openingInput = document.getElementById("acctOpening");
+    if (openingInput) openingInput.oninput = () => { acctFormOpening = openingInput.value; };
+    const addBtn = document.getElementById("acctAddBtn");
+    if (addBtn) addBtn.onclick = () => {
+      if (acctEditingId !== null) {
+        const newName = acctFormName.trim();
+        if (!newName) return;
+        const directoryKey = acctFormType === "Bank" ? "bankDirectory" : acctFormType === "Person" ? "personDirectory" : null;
+        const editId = acctEditingId;
+        update((d) => {
+          const next = Object.assign({}, d, {
+            accounts: d.accounts.map((a) => (a.id === editId ? Object.assign({}, a, { name: newName, type: acctFormType, opening: Number(acctFormOpening) || 0 }) : a)),
+          });
+          if (directoryKey) {
+            const dir = d[directoryKey] || [];
+            next[directoryKey] = dir.includes(newName) ? dir : dir.concat([newName]);
+          }
+          return next;
+        });
+        acctEditingId = null; acctFormName = ""; acctFormOpening = ""; acctFormPickMode = null;
+        return;
+      }
+      const usesDirectory = acctFormType === "Bank" || acctFormType === "Person";
+      const finalName = usesDirectory && acctFormPickMode === "existing" ? acctFormExisting : acctFormName.trim();
+      if (!finalName) return;
+      const directoryKey = acctFormType === "Bank" ? "bankDirectory" : acctFormType === "Person" ? "personDirectory" : null;
+      update((d) => {
+        const next = Object.assign({}, d, { accounts: d.accounts.concat([{ id: uid(), name: finalName, type: acctFormType, opening: Number(acctFormOpening) || 0 }]) });
+        if (directoryKey) {
+          const dir = d[directoryKey] || [];
+          next[directoryKey] = dir.includes(finalName) ? dir : dir.concat([finalName]);
+        }
+        return next;
+      });
+      acctFormName = ""; acctFormOpening = "";
+    };
+    const cancelBtn = document.getElementById("acctCancelBtn");
+    if (cancelBtn) cancelBtn.onclick = () => {
+      acctEditingId = null; acctFormName = ""; acctFormOpening = ""; acctFormPickMode = null;
+      render();
+    };
+    document.querySelectorAll("[data-edit-acc]").forEach((btn) => {
+      btn.onclick = () => {
+        const id = btn.getAttribute("data-edit-acc");
+        const acc = state.accounts.find((a) => a.id === id);
+        if (!acc) return;
+        acctEditingId = id;
+        acctFormType = acc.type;
+        acctFormName = acc.name;
+        acctFormOpening = acc.opening ? String(acc.opening) : "";
+        render();
+      };
+    });
+    document.querySelectorAll("[data-del-acc]").forEach((btn) => {
+      btn.onclick = () => {
+        const id = btn.getAttribute("data-del-acc");
+        if (acctEditingId === id) { acctEditingId = null; acctFormName = ""; acctFormOpening = ""; acctFormPickMode = null; }
+        update((d) => Object.assign({}, d, { accounts: d.accounts.filter((a) => a.id !== id) }));
+      };
+    });
+  }
+
+  if (morePanelOpen === "categories") {
+    document.querySelectorAll("[data-del-cat]").forEach((btn) => {
+      btn.onclick = () => { const id = btn.getAttribute("data-del-cat"); update((d) => Object.assign({}, d, { categories: d.categories.filter((c) => c.id !== id) })); };
+    });
+    const addBtn = document.getElementById("catAddBtn");
+    if (addBtn) addBtn.onclick = () => {
+      const nameInput = document.getElementById("catName");
+      const kindSel = document.getElementById("catKind");
+      const name = nameInput.value.trim();
+      if (!name) return;
+      update((d) => Object.assign({}, d, { categories: d.categories.concat([{ id: uid(), name, kind: kindSel.value }]) }));
+    };
+  }
+
+  if (morePanelOpen === "import") {
+    const fileInput = document.getElementById("csvFileInput");
+    if (fileInput) fileInput.onchange = () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      importError = ""; importPreview = null;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const rows = parseCSV(reader.result);
+          importPreview = buildImportPlan(rows, state);
+        } catch (e) {
+          importError = "Could not read that file. Expected columns: Voucher Type, Voucher Date, Voucher Amount, Description, Category Name, Account Name.";
+        }
+        render();
+      };
+      reader.onerror = () => { importError = "Could not read the CSV file."; render(); };
+      reader.readAsText(file);
+    };
+    const confirmBtn = document.getElementById("csvConfirmBtn");
+    if (confirmBtn) confirmBtn.onclick = () => {
+      if (!importPreview) return;
+      const preview = importPreview;
+      update((d) => {
+        const newPersonNames = preview.newAccounts.filter((a) => a.type === "Person").map((a) => a.name);
+        const personDirectory = Array.from(new Set((d.personDirectory || []).concat(newPersonNames)));
+        return Object.assign({}, d, {
+          accounts: d.accounts.concat(preview.newAccounts),
+          categories: d.categories.concat(preview.newCategories),
+          transactions: d.transactions.concat(preview.transactions),
+          personDirectory,
+        });
+      });
+      importPreview = null;
+    };
+  }
+
+  if (morePanelOpen === "backup") {
+    const exportBtn = document.getElementById("backupExportBtn");
+    if (exportBtn) exportBtn.onclick = () => {
+      const payload = JSON.stringify(state, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "mera-hysab-backup-" + todayStr() + ".json";
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      justExported = true; render();
+      setTimeout(() => { justExported = false; render(); }, 2500);
+    };
+    const fileInput = document.getElementById("backupFileInput");
+    if (fileInput) fileInput.onchange = () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      backupError = ""; backupPending = null;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result);
+          if (!Array.isArray(parsed.accounts) || !Array.isArray(parsed.transactions) || !Array.isArray(parsed.categories)) throw new Error("bad shape");
+          backupPending = withDefaults(parsed);
+        } catch (e) {
+          backupError = "That doesn\u2019t look like a valid Mera Hysab backup file.";
+        }
+        render();
+      };
+      reader.onerror = () => { backupError = "Could not read that file."; render(); };
+      reader.readAsText(file);
+    };
+    const restoreBtn = document.getElementById("backupRestoreBtn");
+    if (restoreBtn) restoreBtn.onclick = () => {
+      if (!backupPending) return;
+      state = backupPending; saveData(); backupPending = null; render();
+    };
+    const cancelBtn = document.getElementById("backupCancelBtn");
+    if (cancelBtn) cancelBtn.onclick = () => { backupPending = null; render(); };
+  }
+}
+
+/* ---------------- Add / Edit Transaction Modal ---------------- */
+let modalForm = null;
+function renderModal() {
+  const editingTxn = modalState.editingTxn;
+  if (!modalForm || modalForm.editingId !== (editingTxn ? editingTxn.id : null)) {
+    modalForm = {
+      editingId: editingTxn ? editingTxn.id : null,
+      type: (editingTxn && editingTxn.type) || "expense",
+      date: (editingTxn && editingTxn.date) || todayStr(),
+      amount: editingTxn ? String(editingTxn.amount) : "",
+      accountId: (editingTxn && editingTxn.accountId) || (state.accounts[0] && state.accounts[0].id) || "",
+      fromAccountId: (editingTxn && editingTxn.fromAccountId) || (state.accounts[0] && state.accounts[0].id) || "",
+      toAccountId: (editingTxn && editingTxn.toAccountId) || (state.accounts[1] && state.accounts[1].id) || (state.accounts[0] && state.accounts[0].id) || "",
+      categoryId: (editingTxn && editingTxn.categoryId) || "",
+      description: (editingTxn && editingTxn.description) || "",
+      touched: false,
+    };
+    const relevantCats0 = state.categories.filter((c) => c.kind === (modalForm.type === "income" ? "income" : "expense"));
+    if (!relevantCats0.find((c) => c.id === modalForm.categoryId)) modalForm.categoryId = (relevantCats0[0] && relevantCats0[0].id) || "";
+  }
+  const f = modalForm;
+  const relevantCats = state.categories.filter((c) => c.kind === (f.type === "income" ? "income" : "expense"));
+
+  const errors = {
+    amount: !(Math.abs(Number(f.amount)) > 0),
+    date: !f.date,
+    account: f.type !== "transfer" && !f.accountId,
+    category: f.type !== "transfer" && !f.categoryId,
+    fromAccount: f.type === "transfer" && !f.fromAccountId,
+    toAccount: f.type === "transfer" && !f.toAccountId,
+    sameAccount: f.type === "transfer" && f.fromAccountId && f.fromAccountId === f.toAccountId,
+  };
+  const hasErrors = Object.keys(errors).some((k) => errors[k]);
+  const noCatsAvailable = f.type !== "transfer" && relevantCats.length === 0;
+  const err = (bad) => (f.touched && bad ? " err" : "");
+
+  let body = '<label class="field-label">Amount (PKR) *</label>' +
+    '<input class="text-input' + err(errors.amount) + '" type="number" id="fAmount" value="' + esc(f.amount) + '" placeholder="0" />' +
+    '<label class="field-label">Date *</label>' +
+    '<input class="text-input' + err(errors.date) + '" type="date" id="fDate" value="' + esc(f.date) + '" />';
+
+  if (f.type !== "transfer") {
+    body += '<label class="field-label">Account *</label>' +
+      '<select class="select-input' + err(errors.account) + '" id="fAccount">' +
+      (state.accounts.length === 0 ? '<option value="">Add an account first</option>' : "") +
+      state.accounts.map((a) => '<option value="' + a.id + '"' + (a.id === f.accountId ? " selected" : "") + ">" + esc(a.name) + "</option>").join("") + "</select>";
+    body += '<label class="field-label">Category *</label>';
+    if (noCatsAvailable) {
+      body += '<div class="error-box">' + icon("alert", 15) + "<span>No " + f.type + " categories yet \u2014 add one under More \u2192 Categories first.</span></div>";
+    } else {
+      body += '<select class="select-input' + err(errors.category) + '" id="fCategory">' +
+        relevantCats.map((c) => '<option value="' + c.id + '"' + (c.id === f.categoryId ? " selected" : "") + ">" + esc(c.name) + "</option>").join("") + "</select>";
+    }
+  } else {
+    body += '<label class="field-label">From *</label>' +
+      '<select class="select-input' + err(errors.fromAccount) + '" id="fFrom">' +
+      state.accounts.map((a) => '<option value="' + a.id + '"' + (a.id === f.fromAccountId ? " selected" : "") + ">" + esc(a.name) + "</option>").join("") + "</select>";
+    body += '<label class="field-label">To *</label>' +
+      '<select class="select-input' + err(errors.toAccount || errors.sameAccount) + '" id="fTo">' +
+      state.accounts.map((a) => '<option value="' + a.id + '"' + (a.id === f.toAccountId ? " selected" : "") + ">" + esc(a.name) + "</option>").join("") + "</select>";
+    if (f.touched && errors.sameAccount) {
+      body += '<div class="error-box">' + icon("alert", 15) + '<span>"From" and "To" must be different accounts.</span></div>';
+    }
+  }
+
+  body += '<label class="field-label">Description (optional)</label>' +
+    '<input class="text-input" id="fDescription" value="' + esc(f.description) + '" placeholder="Optional" />';
+  if (f.touched && hasErrors) {
+    body += '<div class="error-box">' + icon("alert", 15) + "<span>Please fill in all required fields (marked with *).</span></div>";
+  }
+  body += '<button class="primary-btn" id="fSaveBtn">' + icon("check", 16) + " " + (editingTxn ? "Save changes" : "Add entry") + "</button>";
+
+  const types = ["expense", "income", "transfer"];
+  const typeToggle = '<div class="type-toggle">' + types.map((t) => {
+    const active = f.type === t;
+    const bg = active ? (t === "income" ? "var(--credit)" : t === "expense" ? "var(--debit)" : "var(--ink)") : "transparent";
+    const color = active ? "#fff" : "var(--ink)";
+    return '<button class="type-toggle-btn" data-set-type="' + t + '" style="background:' + bg + ";color:" + color + ';">' + (t === "expense" ? "Expense" : t === "income" ? "Income" : "Transfer") + "</button>";
+  }).join("") + "</div>";
+
+  return '<div class="modal-overlay" id="modalOverlay"><div class="modal-sheet" id="modalSheet">' +
+    '<div class="modal-header"><div style="font-weight:700;font-size:15px;">' + (editingTxn ? "Edit entry" : "New entry") + '</div>' +
+    '<button class="icon-btn-ghost" id="modalCloseBtn">' + icon("x", 18) + "</button></div>" +
+    typeToggle + body + "</div></div>";
+}
+
+function wireModalEvents() {
+  const overlay = document.getElementById("modalOverlay");
+  const sheet = document.getElementById("modalSheet");
+  if (overlay) overlay.onclick = () => { modalState = null; modalForm = null; render(); };
+  if (sheet) sheet.onclick = (e) => e.stopPropagation();
+  const closeBtn = document.getElementById("modalCloseBtn");
+  if (closeBtn) closeBtn.onclick = () => { modalState = null; modalForm = null; render(); };
+
+  document.querySelectorAll("[data-set-type]").forEach((btn) => {
+    btn.onclick = () => {
+      modalForm.type = btn.getAttribute("data-set-type");
+      const relevantCats = state.categories.filter((c) => c.kind === (modalForm.type === "income" ? "income" : "expense"));
+      if (!relevantCats.find((c) => c.id === modalForm.categoryId)) modalForm.categoryId = (relevantCats[0] && relevantCats[0].id) || "";
+      render();
+    };
+  });
+
+  const bind = (id, key) => { const el = document.getElementById(id); if (el) el.oninput = () => { modalForm[key] = el.value; }; };
+  bind("fAmount", "amount"); bind("fDate", "date"); bind("fDescription", "description");
+  const accSel = document.getElementById("fAccount"); if (accSel) accSel.onchange = () => { modalForm.accountId = accSel.value; };
+  const catSel = document.getElementById("fCategory"); if (catSel) catSel.onchange = () => { modalForm.categoryId = catSel.value; };
+  const fromSel = document.getElementById("fFrom"); if (fromSel) fromSel.onchange = () => { modalForm.fromAccountId = fromSel.value; };
+  const toSel = document.getElementById("fTo"); if (toSel) toSel.onchange = () => { modalForm.toAccountId = toSel.value; };
+
+  const saveBtn = document.getElementById("fSaveBtn");
+  if (saveBtn) saveBtn.onclick = () => {
+    const f = modalForm;
+    const relevantCats = state.categories.filter((c) => c.kind === (f.type === "income" ? "income" : "expense"));
+    const errors = {
+      amount: !(Math.abs(Number(f.amount)) > 0),
+      date: !f.date,
+      account: f.type !== "transfer" && !f.accountId,
+      category: f.type !== "transfer" && !f.categoryId,
+      fromAccount: f.type === "transfer" && !f.fromAccountId,
+      toAccount: f.type === "transfer" && !f.toAccountId,
+      sameAccount: f.type === "transfer" && f.fromAccountId && f.fromAccountId === f.toAccountId,
+    };
+    const hasErrors = Object.keys(errors).some((k) => errors[k]);
+    const noCatsAvailable = f.type !== "transfer" && relevantCats.length === 0;
+    if (hasErrors || noCatsAvailable) { f.touched = true; render(); return; }
+    const amt = Math.abs(Number(f.amount));
+    const base = { id: f.editingId || uid(), type: f.type, date: f.date, amount: amt, description: f.description.trim() };
+    const txn = f.type === "transfer"
+      ? Object.assign({}, base, { fromAccountId: f.fromAccountId, toAccountId: f.toAccountId })
+      : Object.assign({}, base, { accountId: f.accountId, categoryId: f.categoryId });
+    update((d) => {
+      const rest = d.transactions.filter((t) => t.id !== txn.id);
+      return Object.assign({}, d, { transactions: rest.concat([txn]) });
+    });
+    modalState = null; modalForm = null;
+  };
+}
+
+/* ============== Boot ============== */
+render();
+</script>
+</body>
+</html>
