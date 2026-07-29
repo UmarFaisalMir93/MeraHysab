@@ -1,161 +1,1207 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<title>Mera Hysab</title>
-<style>
-  :root {
-    --paper: #EDE3CC;
-    --paper-line: #C9BB98;
-    --card-bg: #FBF7EC;
-    --ink: #1C2B2E;
-    --ink-soft: #6B6350;
-    --debit: #8B2E28;
-    --debit-bg: #F3E1DE;
-    --credit: #2F5233;
-    --credit-bg: #E2EAE0;
-    --accent-gold: #C99A3E;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); }
-  body { padding-bottom: 84px; -webkit-tap-highlight-color: transparent; }
-  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 1px; }
-  button { font-family: var(--sans); }
-  .icon { width: 1em; height: 1em; display: inline-block; vertical-align: middle; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .header { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px; }
-  .header-badge { width: 36px; height: 36px; border-radius: 50%; background: var(--ink); color: var(--paper); display: flex; align-items: center; justify-content: center; font-family: Georgia, serif; font-weight: 700; font-size: 13px; flex-shrink:0; }
-  .header-title { font-family: Georgia, serif; font-weight: 700; font-size: 18px; line-height: 1.1; }
-  .header-sub { font-size: 11px; color: var(--ink-soft); font-style: italic; }
-  .main { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 16px; }
-  .section-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--ink-soft); margin: 4px 2px; display:flex; justify-content:space-between; }
-  .card { background: var(--card-bg); border: 1px solid var(--paper-line); border-radius: 12px; padding: 14px; }
-  .ledger-card { position: relative; background: var(--card-bg); border: 1px solid var(--paper-line); border-radius: 14px; padding: 22px 18px 16px; overflow: hidden; }
-  .ledger-stitch { position: absolute; top: 8px; left: 8px; right: 8px; bottom: 8px; border: 1px dashed var(--paper-line); border-radius: 8px; pointer-events: none; }
-  .ledger-seal { position: absolute; top: 14px; right: 16px; width: 34px; height: 34px; border-radius: 50%; background: var(--accent-gold); color: #2a1d0a; display: flex; align-items: center; justify-content: center; font-family: Georgia, serif; font-weight: 700; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
-  .ledger-label { font-size: 11.5px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.5px; }
-  .ledger-amount { font-family: var(--mono); font-size: 30px; font-weight: 700; margin: 4px 0 10px; }
-  .ledger-row { display: flex; gap: 18px; font-size: 12.5px; font-weight: 600; }
-  .account-row, .txn-row { display: flex; align-items: center; gap: 10px; background: var(--card-bg); border: 1px solid var(--paper-line); border-radius: 10px; padding: 10px 12px; }
-  .txn-row { cursor: pointer; }
-  .account-icon-wrap, .txn-icon { width: 34px; height: 34px; border-radius: 9px; background: var(--paper); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .txn-icon { width: 32px; height: 32px; border-radius: 8px; }
-  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
-  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-  .date-heading { font-size: 12px; font-weight: 700; color: var(--ink-soft); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
-  .empty-state { text-align: center; padding: 60px 20px; color: var(--ink-soft); }
-  .fab { position: fixed; bottom: 66px; left: 50%; transform: translateX(-50%); width: 56px; height: 56px; border-radius: 50%; background: var(--ink); color: var(--paper); border: 3px solid var(--paper); display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 10px rgba(0,0,0,0.3); cursor: pointer; z-index: 20; }
-  .fab .icon { width: 26px; height: 26px; }
-  .nav { position: fixed; bottom: 0; left: 0; right: 0; height: 62px; background: var(--card-bg); border-top: 1px solid var(--paper-line); display: flex; align-items: center; justify-content: space-around; z-index: 10; }
-  .nav-btn { background: none; border: none; display: flex; flex-direction: column; align-items: center; position: relative; padding: 6px; cursor: pointer; color: var(--ink-soft); }
-  .nav-btn.active { color: var(--ink); }
-  .nav-btn .icon { width: 20px; height: 20px; }
-  .nav-btn span { font-size: 11px; margin-top: 2px; }
-  .nav-dot { position: absolute; bottom: -1px; width: 4px; height: 4px; border-radius: 50%; background: var(--accent-gold); }
-  .modal-overlay { position: fixed; inset: 0; background: rgba(20,20,15,0.45); display: flex; align-items: flex-end; z-index: 30; }
-  .modal-sheet { background: var(--paper); width: 100%; max-height: 88vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 18px; }
-  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .type-toggle { display: flex; gap: 6px; margin-bottom: 14px; background: var(--card-bg); border: 1px solid var(--paper-line); border-radius: 10px; padding: 4px; }
-  .type-toggle-btn { flex: 1; padding: 8px 0; border-radius: 7px; border: none; font-weight: 600; font-size: 12.5px; cursor: pointer; background: transparent; color: var(--ink); }
-  .field-label { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 10px; display: block; }
-  .text-input, .select-input { width: 100%; box-sizing: border-box; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--paper-line); background: var(--card-bg); font-size: 14px; margin-top: 4px; color: var(--ink); font-family: var(--sans); }
-  .text-input.err, .select-input.err { border: 1.5px solid var(--debit); }
-  .primary-btn { width: 100%; margin-top: 18px; padding: 12px 0; border-radius: 10px; border: none; background: var(--ink); color: var(--paper); font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
-  .small-btn { padding: 6px 10px; border-radius: 8px; border: none; background: var(--ink); color: var(--paper); cursor: pointer; display: flex; }
-  .edit-row { display: flex; align-items: center; gap: 8px; padding: 6px 2px; font-size: 13.5px; border-bottom: 1px solid var(--paper-line); }
-  .icon-btn-ghost { background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 4px; display: flex; }
-  .collapsible-header { width: 100%; display: flex; align-items: center; gap: 8px; background: none; border: none; cursor: pointer; padding: 0; color: var(--ink); }
-  .budget-input { width: 96px; padding: 6px 8px; border-radius: 7px; border: 1px solid var(--paper-line); background: var(--paper); font-size: 13px; font-family: var(--mono); }
-  .progress-track { height: 7px; border-radius: 4px; background: var(--paper); overflow: hidden; }
-  .progress-fill { height: 100%; border-radius: 4px; }
-  .error-box { display: flex; align-items: flex-start; gap: 6px; background: var(--debit-bg); color: var(--debit); padding: 8px 10px; border-radius: 8px; font-size: 12.5px; margin-top: 8px; }
-  .import-summary { font-size: 13px; display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
-</style>
-</head>
-<body>
-<div id="app"></div>
-<script>
-"use strict";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import {
+  Home, ListOrdered, PlusCircle, Wallet, Upload, Settings2, ArrowLeftRight,
+  Trash2, Pencil, X, Check, TrendingUp, TrendingDown, ChevronDown, ChevronRight,
+  PiggyBank, FileSpreadsheet, AlertCircle, Landmark, Banknote, User, ArrowUpRight, ArrowDownRight,
+  Download, Save
+} from "lucide-react";
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid
+} from "recharts";
+import Papa from "papaparse";
 
-/* ============== Icons (inline SVG, no dependencies) ============== */
-const ICONS = {
-  home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
-  list: '<circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/><path d="M9 6h11M9 12h11M9 18h11"/>',
-  plus: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
-  wallet: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14" r="1"/>',
-  upload: '<path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/>',
-  download: '<path d="M12 4v12M8 12l4 4 4-4"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/>',
-  settings: '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 00-2-1.2L14 3h-4l-.6 2.6a7 7 0 00-2 1.2l-2.3-.9-2 3.4 2 1.5a7 7 0 000 2.4l-2 1.5 2 3.4 2.3-.9a7 7 0 002 1.2L10 21h4l.6-2.6a7 7 0 002-1.2l2.3.9 2-3.4-2-1.5c.07-.4.1-.8.1-1.2z"/>',
-  swap: '<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
-  trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
-  x: '<path d="M6 6l12 12M18 6L6 18"/>',
-  check: '<path d="M5 12l5 5L19 7"/>',
-  chevronDown: '<path d="M6 9l6 6 6-6"/>',
-  chevronRight: '<path d="M9 6l6 6-6 6"/>',
-  piggy: '<path d="M4 12a6 6 0 016-6h3a5 5 0 015 5v1l2 1-2 1v1a2 2 0 01-2 2h-1v2H9v-2a6 6 0 01-5-6z"/><circle cx="15" cy="10" r="0.6" fill="currentColor"/>',
-  sheet: '<rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 8h8M8 12h8M8 16h5"/>',
-  alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v4"/><circle cx="12" cy="17" r="0.6" fill="currentColor"/>',
-  bank: '<path d="M4 10l8-6 8 6"/><path d="M5 10v9M9 10v9M15 10v9M19 10v9M3 19h18"/>',
-  cash: '<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
-  person: '<circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0116 0"/>',
-  arrowUpRight: '<path d="M7 17L17 7M8 7h9v9"/>',
-  arrowDownRight: '<path d="M7 7l10 10M17 8v9H8"/>',
-  save: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h8V4M8 14h8v6H8z"/>',
-  pencil: '<path d="M4 20l1-4L16 5l3 3-11 11z"/>'
-};
-function icon(name, size) {
-  size = size || 17;
-  return '<svg class="icon" style="width:' + size + 'px;height:' + size + 'px" viewBox="0 0 24 24">' + (ICONS[name] || "") + "</svg>";
-}
+const STORAGE_KEY = "mera-hysab-data-v1";
 
-/* ============== Data model & storage ============== */
-const STORAGE_KEY = "mera-hysab-offline-v1";
-const ACCOUNT_TYPES = ["Cash", "Bank", "Savings", "Person"];
-const ACCOUNT_ICON = { Cash: "cash", Bank: "bank", Savings: "piggy", Person: "person" };
-const PALETTE = ["#8B2E28", "#B8862E", "#2F5233", "#4A5A5C", "#6E4A2E", "#3E6B6F", "#7A4A6B", "#A65D2E"];
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
-const DEFAULT_ACCOUNTS = [
-  { id: "acc-cash", name: "Cash", type: "Cash", opening: 0 },
-  { id: "acc-bank", name: "Bank", type: "Bank", opening: 0 },
-];
-const DEFAULT_CATEGORIES = [
-  { id: "cat-salary", name: "Salary", kind: "income" },
-  { id: "cat-freelance", name: "Freelance", kind: "income" },
-  { id: "cat-other-income", name: "Other Income", kind: "income" },
-  { id: "cat-food", name: "Food & Drink", kind: "expense" },
-  { id: "cat-transport", name: "Transport", kind: "expense" },
-  { id: "cat-shopping", name: "Shopping", kind: "expense" },
-  { id: "cat-bills", name: "Bills & Utilities", kind: "expense" },
-  { id: "cat-rent", name: "Rent Paid", kind: "expense" },
-  { id: "cat-entertainment", name: "Entertainment", kind: "expense" },
-  { id: "cat-medical", name: "Medical", kind: "expense" },
-  { id: "cat-personal", name: "Personal", kind: "expense" },
-  { id: "cat-other-expense", name: "Other Expenses", kind: "expense" },
-];
-
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
-function fmt(n) {
+const fmt = (n) => {
   const neg = n < 0;
   const v = Math.abs(Math.round(n)).toLocaleString("en-US");
   return (neg ? "-Rs " : "Rs ") + v;
-}
-function todayStr() { return new Date().toISOString().slice(0, 10); }
-function monthKey(dateStr) { return (dateStr || "").slice(0, 7); }
+};
+
+const pad2 = (n) => String(n).padStart(2, "0");
+const localDateStr = (d) => {
+  d = d || new Date();
+  return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+};
+const todayStr = () => localDateStr();
+
+const monthKey = (dateStr) => dateStr.slice(0, 7);
+
+const ACCOUNT_ICON = { Cash: Banknote, Bank: Landmark, Person: User, Savings: PiggyBank };
+const ACCOUNT_TYPES = ["Cash", "Bank", "Savings", "Person"];
+
+// Seeded with the user's real, reconciled transaction history (imported from their
+// original Hysab Kitab CSV export, opening balances corrected to match their prior app).
+const PRELOADED_DATA = {
+  "accounts": [
+    {
+      "id": "acc-cash",
+      "name": "Cash",
+      "type": "Cash",
+      "opening": 0
+    },
+    {
+      "id": "ms4glec7x917b5",
+      "name": "Bank Alfalah",
+      "type": "Bank",
+      "opening": 795
+    },
+    {
+      "id": "ms4glec7xdj1ka",
+      "name": "Nayapay",
+      "type": "Bank",
+      "opening": 0
+    },
+    {
+      "id": "ms4glec83s0x4x",
+      "name": "Boland",
+      "type": "Person",
+      "opening": 0
+    },
+    {
+      "id": "ms4glec8r1sliu",
+      "name": "Imran Jameel",
+      "type": "Person",
+      "opening": 0
+    },
+    {
+      "id": "ms4v2lry42i0bg",
+      "name": "Baba",
+      "type": "Person",
+      "opening": 0
+    },
+    {
+      "id": "ms4x51r7pbnr1e",
+      "name": "Subham",
+      "type": "Person",
+      "opening": 0
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat-salary",
+      "name": "Salary",
+      "kind": "income"
+    },
+    {
+      "id": "cat-freelance",
+      "name": "Freelance",
+      "kind": "income"
+    },
+    {
+      "id": "cat-other-income",
+      "name": "Other Income",
+      "kind": "income"
+    },
+    {
+      "id": "cat-food",
+      "name": "Food & Drink",
+      "kind": "expense"
+    },
+    {
+      "id": "cat-transport",
+      "name": "Transport",
+      "kind": "expense"
+    },
+    {
+      "id": "cat-shopping",
+      "name": "Shopping",
+      "kind": "expense"
+    },
+    {
+      "id": "cat-bills",
+      "name": "Bills & Utilities",
+      "kind": "expense"
+    },
+    {
+      "id": "cat-rent",
+      "name": "Rent Paid",
+      "kind": "expense"
+    },
+    {
+      "id": "cat-entertainment",
+      "name": "Entertainment",
+      "kind": "expense"
+    },
+    {
+      "id": "cat-medical",
+      "name": "Medical",
+      "kind": "expense"
+    },
+    {
+      "id": "cat-personal",
+      "name": "Personal",
+      "kind": "expense"
+    },
+    {
+      "id": "cat-other-expense",
+      "name": "Other Expenses",
+      "kind": "expense"
+    },
+    {
+      "id": "ms4glec8dvsxsq",
+      "name": "Fuel & Maintenance",
+      "kind": "expense"
+    },
+    {
+      "id": "ms4glec8vg7ws9",
+      "name": "Transport Income",
+      "kind": "income"
+    },
+    {
+      "id": "ms4glec8p1iv2w",
+      "name": "Donations/Charity",
+      "kind": "expense"
+    },
+    {
+      "id": "ms4glec9ot9x31",
+      "name": "Loan Paid",
+      "kind": "expense"
+    },
+    {
+      "id": "ms4glec9gqkdvg",
+      "name": "Family",
+      "kind": "expense"
+    },
+    {
+      "id": "ms4wt5lojryzx4",
+      "name": "Mobile",
+      "kind": "expense"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "ms4glec77zfh6t",
+      "type": "transfer",
+      "date": "2026-07-10",
+      "amount": 1000,
+      "fromAccountId": "ms4glec7x917b5",
+      "toAccountId": "ms4glec7xdj1ka",
+      "description": ""
+    },
+    {
+      "id": "ms4glec8nk6wpr",
+      "type": "transfer",
+      "date": "2026-07-10",
+      "amount": 5000,
+      "fromAccountId": "ms4glec7x917b5",
+      "toAccountId": "acc-cash",
+      "description": ""
+    },
+    {
+      "id": "ms4glec8eh7qn9",
+      "type": "transfer",
+      "date": "2026-07-10",
+      "amount": 500,
+      "fromAccountId": "ms4glec7x917b5",
+      "toAccountId": "ms4glec83s0x4x",
+      "description": ""
+    },
+    {
+      "id": "ms4glec8ptie1u",
+      "type": "transfer",
+      "date": "2026-07-11",
+      "amount": 500,
+      "fromAccountId": "ms4glec83s0x4x",
+      "toAccountId": "acc-cash",
+      "description": ""
+    },
+    {
+      "id": "ms4glec8qzzggp",
+      "type": "transfer",
+      "date": "2026-07-11",
+      "amount": 500,
+      "fromAccountId": "acc-cash",
+      "toAccountId": "ms4glec83s0x4x",
+      "description": "said he will transfer in account"
+    },
+    {
+      "id": "ms4glec88j54st",
+      "type": "transfer",
+      "date": "2026-07-15",
+      "amount": 3000,
+      "fromAccountId": "ms4glec7x917b5",
+      "toAccountId": "acc-cash",
+      "description": ""
+    },
+    {
+      "id": "ms4glec8hg8cax",
+      "type": "transfer",
+      "date": "2026-07-15",
+      "amount": 2000,
+      "fromAccountId": "ms4glec7x917b5",
+      "toAccountId": "ms4glec7xdj1ka",
+      "description": ""
+    },
+    {
+      "id": "ms4glec8roendc",
+      "type": "transfer",
+      "date": "2026-07-18",
+      "amount": 20000,
+      "fromAccountId": "ms4glec7x917b5",
+      "toAccountId": "ms4glec8r1sliu",
+      "description": ""
+    },
+    {
+      "id": "ms4glec8dajwdu",
+      "type": "transfer",
+      "date": "2026-07-18",
+      "amount": 20000,
+      "fromAccountId": "ms4glec8r1sliu",
+      "toAccountId": "ms4glec7x917b5",
+      "description": "Transfer for Account Deletion"
+    },
+    {
+      "id": "ms4glec87z3ylq",
+      "type": "transfer",
+      "date": "2026-07-20",
+      "amount": 800,
+      "fromAccountId": "ms4glec7x917b5",
+      "toAccountId": "ms4glec7xdj1ka",
+      "description": ""
+    },
+    {
+      "id": "ms4glec8n2a2lf",
+      "type": "transfer",
+      "date": "2026-07-24",
+      "amount": 93,
+      "fromAccountId": "ms4glec7x917b5",
+      "toAccountId": "ms4glec7xdj1ka",
+      "description": ""
+    },
+    {
+      "id": "ms4glec82nvy9t",
+      "type": "expense",
+      "date": "2026-07-10",
+      "amount": 260,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Sprite and Ice Cream"
+    },
+    {
+      "id": "ms4glec8wuqmx2",
+      "type": "expense",
+      "date": "2026-07-10",
+      "amount": 452,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-entertainment",
+      "description": "YouTube Music"
+    },
+    {
+      "id": "ms4glec8cr1rxj",
+      "type": "expense",
+      "date": "2026-07-10",
+      "amount": 167,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-other-expense",
+      "description": "Account Charges"
+    },
+    {
+      "id": "ms4glec8nglslm",
+      "type": "expense",
+      "date": "2026-07-10",
+      "amount": 50,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-shopping",
+      "description": "Nut"
+    },
+    {
+      "id": "ms4glec8okrrcy",
+      "type": "expense",
+      "date": "2026-07-10",
+      "amount": 240,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-personal",
+      "description": "Cigarettes"
+    },
+    {
+      "id": "ms4glec8h81tmu",
+      "type": "income",
+      "date": "2026-07-10",
+      "amount": 69491,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-salary",
+      "description": "Salary"
+    },
+    {
+      "id": "ms4glec8j63f7c",
+      "type": "expense",
+      "date": "2026-07-10",
+      "amount": 35000,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-rent",
+      "description": "Rent"
+    },
+    {
+      "id": "ms4glec8xtyibr",
+      "type": "expense",
+      "date": "2026-07-10",
+      "amount": 50,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-shopping",
+      "description": "Nut"
+    },
+    {
+      "id": "ms4glec8jjab16",
+      "type": "expense",
+      "date": "2026-07-11",
+      "amount": 1200,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Motor Oil"
+    },
+    {
+      "id": "ms4glec8ipzc2a",
+      "type": "expense",
+      "date": "2026-07-11",
+      "amount": 60,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "7 up"
+    },
+    {
+      "id": "ms4glec8usas76",
+      "type": "expense",
+      "date": "2026-07-11",
+      "amount": 150,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Bike Wash"
+    },
+    {
+      "id": "ms4glec85cds3u",
+      "type": "expense",
+      "date": "2026-07-11",
+      "amount": 330,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Petrol"
+    },
+    {
+      "id": "ms4glec8ixjycc",
+      "type": "income",
+      "date": "2026-07-11",
+      "amount": 15000,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-other-income",
+      "description": "Cometti Received"
+    },
+    {
+      "id": "ms4glec8sz1iqb",
+      "type": "expense",
+      "date": "2026-07-11",
+      "amount": 130,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Engine Pipe"
+    },
+    {
+      "id": "ms4glec8dbx1q6",
+      "type": "expense",
+      "date": "2026-07-11",
+      "amount": 170,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Front Wheel Bearing"
+    },
+    {
+      "id": "ms4glec82zfnqu",
+      "type": "expense",
+      "date": "2026-07-11",
+      "amount": 350,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Side Mirror"
+    },
+    {
+      "id": "ms4glec8wjapuq",
+      "type": "expense",
+      "date": "2026-07-11",
+      "amount": 500,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Bike Service Maintenance"
+    },
+    {
+      "id": "ms4glec8abnot4",
+      "type": "expense",
+      "date": "2026-07-11",
+      "amount": 580,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-food",
+      "description": "Ishaq Pulao"
+    },
+    {
+      "id": "ms4glec89nrmq3",
+      "type": "expense",
+      "date": "2026-07-11",
+      "amount": 180,
+      "accountId": "acc-cash",
+      "categoryId": "cat-personal",
+      "description": "Cigarettes"
+    },
+    {
+      "id": "ms4glec8gcjl6p",
+      "type": "expense",
+      "date": "2026-07-12",
+      "amount": 500,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": ""
+    },
+    {
+      "id": "ms4glec8cl87hh",
+      "type": "income",
+      "date": "2026-07-12",
+      "amount": 150,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8vg7ws9",
+      "description": ""
+    },
+    {
+      "id": "ms4glec8z017bq",
+      "type": "income",
+      "date": "2026-07-12",
+      "amount": 200,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "ms4glec8vg7ws9",
+      "description": ""
+    },
+    {
+      "id": "ms4glec87uspw3",
+      "type": "income",
+      "date": "2026-07-12",
+      "amount": 120,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8vg7ws9",
+      "description": ""
+    },
+    {
+      "id": "ms4glec86tym9q",
+      "type": "expense",
+      "date": "2026-07-12",
+      "amount": 300,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8p1iv2w",
+      "description": ""
+    },
+    {
+      "id": "ms4glec88w2o0c",
+      "type": "expense",
+      "date": "2026-07-12",
+      "amount": 850,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-food",
+      "description": "Paratha Roll Karachi Red Rock"
+    },
+    {
+      "id": "ms4glec8w18u6m",
+      "type": "income",
+      "date": "2026-07-13",
+      "amount": 183,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "ms4glec8vg7ws9",
+      "description": "Yango Bonus"
+    },
+    {
+      "id": "ms4glec8c15866",
+      "type": "expense",
+      "date": "2026-07-13",
+      "amount": 40,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Bike Parking"
+    },
+    {
+      "id": "ms4glec84is89h",
+      "type": "expense",
+      "date": "2026-07-13",
+      "amount": 170,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Fries and Drink"
+    },
+    {
+      "id": "ms4glec85j0f5y",
+      "type": "expense",
+      "date": "2026-07-13",
+      "amount": 60,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Bike Parking"
+    },
+    {
+      "id": "ms4glec8sfv1d9",
+      "type": "expense",
+      "date": "2026-07-13",
+      "amount": 350,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Petrol"
+    },
+    {
+      "id": "ms4glec96svipp",
+      "type": "expense",
+      "date": "2026-07-13",
+      "amount": 8,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-other-expense",
+      "description": "Bank Charges"
+    },
+    {
+      "id": "ms4glec999pwcq",
+      "type": "expense",
+      "date": "2026-07-14",
+      "amount": 50,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Roti"
+    },
+    {
+      "id": "ms4glec9emo3gu",
+      "type": "expense",
+      "date": "2026-07-14",
+      "amount": 180,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-personal",
+      "description": "Cigarettes"
+    },
+    {
+      "id": "ms4glec94mja1b",
+      "type": "expense",
+      "date": "2026-07-14",
+      "amount": 500,
+      "accountId": "acc-cash",
+      "categoryId": "cat-personal",
+      "description": "Hair Cutting"
+    },
+    {
+      "id": "ms4glec9yjz9wp",
+      "type": "expense",
+      "date": "2026-07-14",
+      "amount": 150,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Corn"
+    },
+    {
+      "id": "ms4glec96i4h80",
+      "type": "expense",
+      "date": "2026-07-15",
+      "amount": 420,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-food",
+      "description": "Chicken Tikki"
+    },
+    {
+      "id": "ms4glec9ofhmv8",
+      "type": "income",
+      "date": "2026-07-15",
+      "amount": 120,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8vg7ws9",
+      "description": ""
+    },
+    {
+      "id": "ms4glec97jv6jb",
+      "type": "expense",
+      "date": "2026-07-15",
+      "amount": 1500,
+      "accountId": "acc-cash",
+      "categoryId": "cat-shopping",
+      "description": "Shirts"
+    },
+    {
+      "id": "ms4glec9hrlrb3",
+      "type": "expense",
+      "date": "2026-07-15",
+      "amount": 2500,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-shopping",
+      "description": "Pants"
+    },
+    {
+      "id": "ms4glec9lpaot2",
+      "type": "expense",
+      "date": "2026-07-15",
+      "amount": 1350,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-shopping",
+      "description": "Clothes"
+    },
+    {
+      "id": "ms4glec98scr70",
+      "type": "expense",
+      "date": "2026-07-15",
+      "amount": 2,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-other-expense",
+      "description": "Bank Charged"
+    },
+    {
+      "id": "ms4glec9a5hu1f",
+      "type": "expense",
+      "date": "2026-07-15",
+      "amount": 1,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-other-expense",
+      "description": "Bank Charges"
+    },
+    {
+      "id": "ms4glec9q01bsj",
+      "type": "expense",
+      "date": "2026-07-15",
+      "amount": 1100,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-food",
+      "description": "Johnny Jugnu"
+    },
+    {
+      "id": "ms4glec9v8p51g",
+      "type": "expense",
+      "date": "2026-07-15",
+      "amount": 70,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Sting"
+    },
+    {
+      "id": "ms4glec9fbi9rf",
+      "type": "expense",
+      "date": "2026-07-15",
+      "amount": 10,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Parking"
+    },
+    {
+      "id": "ms4glec9z8kddv",
+      "type": "expense",
+      "date": "2026-07-15",
+      "amount": 320,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Samosa"
+    },
+    {
+      "id": "ms4glec9uqdlxy",
+      "type": "expense",
+      "date": "2026-07-16",
+      "amount": 100,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Puncture"
+    },
+    {
+      "id": "ms4glec9tu7he2",
+      "type": "expense",
+      "date": "2026-07-16",
+      "amount": 200,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Fries"
+    },
+    {
+      "id": "ms4glec94ydfkg",
+      "type": "expense",
+      "date": "2026-07-16",
+      "amount": 280,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-personal",
+      "description": "Cigarette"
+    },
+    {
+      "id": "ms4glec9jh299e",
+      "type": "expense",
+      "date": "2026-07-17",
+      "amount": 160,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Khamiri"
+    },
+    {
+      "id": "ms4glec922msmh",
+      "type": "expense",
+      "date": "2026-07-17",
+      "amount": 500,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Petrol"
+    },
+    {
+      "id": "ms4glec9j7tk9i",
+      "type": "expense",
+      "date": "2026-07-17",
+      "amount": 200,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-transport",
+      "description": "Indrive"
+    },
+    {
+      "id": "ms4glec9y5uoef",
+      "type": "expense",
+      "date": "2026-07-17",
+      "amount": 160,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Chips"
+    },
+    {
+      "id": "ms4glec9thc23j",
+      "type": "expense",
+      "date": "2026-07-18",
+      "amount": 20000,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "ms4glec9ot9x31",
+      "description": "Imran Jameel"
+    },
+    {
+      "id": "ms4glec9xm824o",
+      "type": "expense",
+      "date": "2026-07-18",
+      "amount": 180,
+      "accountId": "acc-cash",
+      "categoryId": "cat-personal",
+      "description": "Cigarettes"
+    },
+    {
+      "id": "ms4glec9ovjhjr",
+      "type": "expense",
+      "date": "2026-07-18",
+      "amount": 50,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Roti"
+    },
+    {
+      "id": "ms4glec98mw1mg",
+      "type": "expense",
+      "date": "2026-07-19",
+      "amount": 140,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Tea"
+    },
+    {
+      "id": "ms4glec99i250r",
+      "type": "expense",
+      "date": "2026-07-19",
+      "amount": 300,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Biryani"
+    },
+    {
+      "id": "ms4glec94swom7",
+      "type": "expense",
+      "date": "2026-07-19",
+      "amount": 40,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Roti"
+    },
+    {
+      "id": "ms4glec9cf3jkx",
+      "type": "expense",
+      "date": "2026-07-19",
+      "amount": 180,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-personal",
+      "description": "Cigarette"
+    },
+    {
+      "id": "ms4glec98mq5gb",
+      "type": "expense",
+      "date": "2026-07-19",
+      "amount": 200,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Car Cover Wash"
+    },
+    {
+      "id": "ms4glec95r9su4",
+      "type": "income",
+      "date": "2026-07-20",
+      "amount": 560,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8vg7ws9",
+      "description": ""
+    },
+    {
+      "id": "ms4glec9fvd626",
+      "type": "income",
+      "date": "2026-07-20",
+      "amount": 267,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "ms4glec8vg7ws9",
+      "description": ""
+    },
+    {
+      "id": "ms4glec96xdbe5",
+      "type": "expense",
+      "date": "2026-07-20",
+      "amount": 500,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Petrol"
+    },
+    {
+      "id": "ms4glec9rvzint",
+      "type": "income",
+      "date": "2026-07-20",
+      "amount": 40,
+      "accountId": "acc-cash",
+      "categoryId": "cat-other-income",
+      "description": "Miscellaneous"
+    },
+    {
+      "id": "ms4glec96ug9sv",
+      "type": "income",
+      "date": "2026-07-20",
+      "amount": 390,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "ms4glec8vg7ws9",
+      "description": ""
+    },
+    {
+      "id": "ms4glec9jcwjdt",
+      "type": "expense",
+      "date": "2026-07-20",
+      "amount": 150,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Puncture"
+    },
+    {
+      "id": "ms4glec9chsy2f",
+      "type": "income",
+      "date": "2026-07-20",
+      "amount": 170,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8vg7ws9",
+      "description": ""
+    },
+    {
+      "id": "ms4glec9qifpeu",
+      "type": "expense",
+      "date": "2026-07-20",
+      "amount": 70,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "roti"
+    },
+    {
+      "id": "ms4glec9ncokwg",
+      "type": "expense",
+      "date": "2026-07-20",
+      "amount": 500,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Petrol"
+    },
+    {
+      "id": "ms4glec9qka1y7",
+      "type": "expense",
+      "date": "2026-07-20",
+      "amount": 1500,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-food",
+      "description": "Drippin Bites Cafe"
+    },
+    {
+      "id": "ms4glec9nfwq1u",
+      "type": "expense",
+      "date": "2026-07-20",
+      "amount": 3072,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "ms4glec9gqkdvg",
+      "description": "Pampers"
+    },
+    {
+      "id": "ms4glec9t0yl2n",
+      "type": "expense",
+      "date": "2026-07-20",
+      "amount": 500,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-food",
+      "description": "Juices"
+    },
+    {
+      "id": "ms4glec9xms0qg",
+      "type": "expense",
+      "date": "2026-07-21",
+      "amount": 5000,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "ms4glec9gqkdvg",
+      "description": "Zoya"
+    },
+    {
+      "id": "ms4glec9by5ro3",
+      "type": "expense",
+      "date": "2026-07-21",
+      "amount": 200,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Slush"
+    },
+    {
+      "id": "ms4glec94hhidl",
+      "type": "expense",
+      "date": "2026-07-21",
+      "amount": 290,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Chips"
+    },
+    {
+      "id": "ms4glec9cgq3q9",
+      "type": "expense",
+      "date": "2026-07-21",
+      "amount": 140,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-food",
+      "description": "Pepsi"
+    },
+    {
+      "id": "ms4glec9kmv38c",
+      "type": "expense",
+      "date": "2026-07-22",
+      "amount": 80,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-medical",
+      "description": "Medicine"
+    },
+    {
+      "id": "ms4glec947yb2v",
+      "type": "expense",
+      "date": "2026-07-23",
+      "amount": 180,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "cat-personal",
+      "description": "Cigarette"
+    },
+    {
+      "id": "ms4glec9wgofrv",
+      "type": "income",
+      "date": "2026-07-23",
+      "amount": 320,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "ms4glec8vg7ws9",
+      "description": ""
+    },
+    {
+      "id": "ms4glec9jlh0p6",
+      "type": "expense",
+      "date": "2026-07-23",
+      "amount": 30,
+      "accountId": "acc-cash",
+      "categoryId": "cat-food",
+      "description": "Roti"
+    },
+    {
+      "id": "ms4glec9u30y8f",
+      "type": "expense",
+      "date": "2026-07-23",
+      "amount": 20,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Tyre Air"
+    },
+    {
+      "id": "ms4glec9yhkdys",
+      "type": "expense",
+      "date": "2026-07-24",
+      "amount": 120,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-food",
+      "description": "Alo Paratha"
+    },
+    {
+      "id": "ms4glec95usnqf",
+      "type": "expense",
+      "date": "2026-07-24",
+      "amount": 500,
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "ms4glec8dvsxsq",
+      "description": "Petrol"
+    },
+    {
+      "id": "ms4glec9r6bt9u",
+      "type": "income",
+      "date": "2026-07-24",
+      "amount": 200,
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8vg7ws9",
+      "description": ""
+    },
+    {
+      "id": "ms4glec9fbbnse",
+      "type": "expense",
+      "date": "2026-07-24",
+      "amount": 240,
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-food",
+      "description": "Alo Paratha"
+    },
+    {
+      "id": "ms4v64hz7shwtn",
+      "type": "expense",
+      "date": "2026-07-26",
+      "amount": 200,
+      "description": "Tyre Puncture",
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq"
+    },
+    {
+      "id": "ms4vccqfxys78r",
+      "type": "expense",
+      "date": "2026-07-26",
+      "amount": 10,
+      "description": "Air",
+      "accountId": "acc-cash",
+      "categoryId": "ms4glec8dvsxsq"
+    },
+    {
+      "id": "ms4vdnmxjx527f",
+      "type": "expense",
+      "date": "2026-07-28",
+      "amount": 190,
+      "description": "Alo Paratha",
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-food"
+    },
+    {
+      "id": "ms4wmrssxwkrvn",
+      "type": "expense",
+      "date": "2026-07-25",
+      "amount": 140,
+      "description": "Chips and Biscuit",
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-food"
+    },
+    {
+      "id": "ms4v3eotbdo3nv",
+      "type": "transfer",
+      "date": "2026-07-25",
+      "amount": 2000,
+      "description": "",
+      "fromAccountId": "ms4v2lry42i0bg",
+      "toAccountId": "ms4glec7x917b5"
+    },
+    {
+      "id": "ms4v4nld7nrdh3",
+      "type": "transfer",
+      "date": "2026-07-25",
+      "amount": 2000,
+      "description": "",
+      "fromAccountId": "ms4glec7x917b5",
+      "toAccountId": "ms4glec7xdj1ka"
+    },
+    {
+      "id": "ms4wnzjfkev4gl",
+      "type": "expense",
+      "date": "2026-07-25",
+      "amount": 200,
+      "description": "Cigarette",
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-personal"
+    },
+    {
+      "id": "ms4woubgqygnzg",
+      "type": "expense",
+      "date": "2026-07-27",
+      "amount": 180,
+      "description": "Cigarette",
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-personal"
+    },
+    {
+      "id": "ms4wq62tr10dky",
+      "type": "expense",
+      "date": "2026-07-26",
+      "amount": 500,
+      "description": "Petrol",
+      "accountId": "ms4glec7x917b5",
+      "categoryId": "ms4glec8dvsxsq"
+    },
+    {
+      "id": "ms4wtmvmfx0r27",
+      "type": "expense",
+      "date": "2026-07-27",
+      "amount": 100,
+      "description": "Load",
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "ms4wt5lojryzx4"
+    },
+    {
+      "id": "ms4glec9obtrtk",
+      "type": "expense",
+      "date": "2026-07-24",
+      "amount": 100,
+      "description": "Mobile Load",
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "ms4wt5lojryzx4"
+    },
+    {
+      "id": "ms4glec8m9m99f",
+      "type": "expense",
+      "date": "2026-07-12",
+      "amount": 200,
+      "description": "Mobile Load",
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "ms4wt5lojryzx4"
+    },
+    {
+      "id": "ms4glec9dy7cj7",
+      "type": "expense",
+      "date": "2026-07-18",
+      "amount": 379,
+      "description": "Crunchyroll",
+      "accountId": "ms4glec7xdj1ka",
+      "categoryId": "cat-entertainment"
+    },
+    {
+      "id": "ms4x5rc85h774e",
+      "type": "transfer",
+      "date": "2026-07-22",
+      "amount": 1440,
+      "description": "",
+      "fromAccountId": "ms4x51r7pbnr1e",
+      "toAccountId": "acc-cash"
+    },
+    {
+      "id": "ms4x7dekivmu1s",
+      "type": "expense",
+      "date": "2026-07-22",
+      "amount": 1440,
+      "description": "KFC with Colleagues",
+      "accountId": "acc-cash",
+      "categoryId": "cat-food"
+    }
+  ],
+  "budgets": [],
+  "bankDirectory": [
+    "Bank",
+    "Bank Alfalah",
+    "Nayapay"
+  ],
+  "personDirectory": [
+    "Boland",
+    "Imran Jameel",
+    "Baba",
+    "Subham"
+  ]
+};
 
 function defaultData() {
-  return {
-    accounts: DEFAULT_ACCOUNTS.map((a) => Object.assign({}, a)),
-    categories: DEFAULT_CATEGORIES.map((c) => Object.assign({}, c)),
-    transactions: [],
-    budgets: [],
-    bankDirectory: ["Bank"],
-    personDirectory: [],
-  };
+  // Deep clone so repeated calls (e.g. after a factory reset) never share references
+  return JSON.parse(JSON.stringify(PRELOADED_DATA));
 }
+
+// Fills in fields that may be missing from data saved by an older version of the app
 function withDefaults(d) {
-  d = d || {};
   return {
     accounts: d.accounts || [],
     categories: d.categories || [],
@@ -166,23 +1212,37 @@ function withDefaults(d) {
   };
 }
 
-let state = loadData();
+function useLedgerData() {
+  const [data, setData] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+  const saveTimer = useRef(null);
 
-function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? withDefaults(JSON.parse(raw)) : defaultData();
-  } catch (e) {
-    return defaultData();
-  }
-}
-function saveData() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* storage full or blocked */ }
-}
-function update(mutator) {
-  state = mutator(state);
-  saveData();
-  render();
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get(STORAGE_KEY, false);
+        setData(res && res.value ? withDefaults(JSON.parse(res.value)) : defaultData());
+      } catch (e) {
+        setData(defaultData());
+      }
+      setLoaded(true);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!loaded || !data) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      try {
+        await window.storage.set(STORAGE_KEY, JSON.stringify(data), false);
+      } catch (e) {
+        /* ignore transient storage errors */
+      }
+    }, 400);
+    return () => clearTimeout(saveTimer.current);
+  }, [data, loaded]);
+
+  return [data, setData, loaded];
 }
 
 function accountBalance(acc, transactions) {
@@ -198,112 +1258,712 @@ function accountBalance(acc, transactions) {
   return bal;
 }
 
-/* ============== Simple SVG charts (no chart library) ============== */
-function polarToCartesian(cx, cy, r, angleDeg) {
-  const a = ((angleDeg - 90) * Math.PI) / 180;
-  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
-}
-function donutSlicePath(cx, cy, rOuter, rInner, startAngle, endAngle) {
-  const so = polarToCartesian(cx, cy, rOuter, endAngle);
-  const eo = polarToCartesian(cx, cy, rOuter, startAngle);
-  const si = polarToCartesian(cx, cy, rInner, endAngle);
-  const ei = polarToCartesian(cx, cy, rInner, startAngle);
-  const largeArc = endAngle - startAngle <= 180 ? 0 : 1;
-  return ["M", so.x, so.y, "A", rOuter, rOuter, 0, largeArc, 0, eo.x, eo.y,
-          "L", ei.x, ei.y, "A", rInner, rInner, 0, largeArc, 1, si.x, si.y, "Z"].join(" ");
-}
-function buildPieSVG(pairs) {
-  const total = pairs.reduce((s, p) => s + p.value, 0);
-  if (total <= 0) return "";
-  const cx = 100, cy = 100, rOuter = 78, rInner = 46;
-  let angle = 0;
-  let paths = "";
-  pairs.forEach((p, i) => {
-    const slice = (p.value / total) * 360;
-    const start = angle, end = angle + slice;
-    paths += '<path d="' + donutSlicePath(cx, cy, rOuter, rInner, start, end) + '" fill="' + PALETTE[i % PALETTE.length] + '"/>';
-    angle = end;
-  });
-  return '<svg viewBox="0 0 200 200" style="width:100%;max-width:220px;display:block;margin:0 auto;">' + paths + "</svg>";
-}
-function buildBarSVG(last6) {
-  const w = 300, h = 150, padBottom = 18, gap = 10, groupW = (w - gap * 7) / 6;
-  const max = Math.max(1, ...last6.map((m) => Math.max(m.income, m.expense)));
-  let bars = "";
-  last6.forEach((m, i) => {
-    const gx = gap + i * (groupW + gap);
-    const barW = groupW / 2 - 2;
-    const incH = (m.income / max) * (h - padBottom - 6);
-    const expH = (m.expense / max) * (h - padBottom - 6);
-    bars += '<rect x="' + gx + '" y="' + (h - padBottom - incH) + '" width="' + barW + '" height="' + incH + '" rx="2" fill="#2F5233"/>';
-    bars += '<rect x="' + (gx + barW + 2) + '" y="' + (h - padBottom - expH) + '" width="' + barW + '" height="' + expH + '" rx="2" fill="#8B2E28"/>';
-    bars += '<text x="' + (gx + groupW / 2) + '" y="' + (h - 4) + '" font-size="9" fill="#6B6350" text-anchor="middle">' + m.month + "</text>";
-  });
-  return '<svg viewBox="0 0 ' + w + " " + h + '" style="width:100%;display:block;">' + bars + "</svg>";
+const PALETTE = ["#8B2E28", "#B8862E", "#2F5233", "#4A5A5C", "#6E4A2E", "#3E6B6F", "#7A4A6B", "#A65D2E"];
+
+export default function App() {
+  const [data, setData, loaded] = useLedgerData();
+  const [tab, setTab] = useState("dashboard");
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingTxn, setEditingTxn] = useState(null);
+
+  if (!loaded || !data) {
+    return (
+      <div style={styles.loadingWrap}>
+        <div style={styles.loadingCard}>Opening the ledger…</div>
+      </div>
+    );
+  }
+
+  const update = (fn) => setData((prev) => fn({ ...prev }));
+
+  return (
+    <div style={styles.app}>
+      <style>{css}</style>
+      <header style={styles.header}>
+        <div style={styles.headerBadge}>MH</div>
+        <div>
+          <div style={styles.headerTitle}>Mera Hysab</div>
+          <div style={styles.headerSub}>your ledger, your rules</div>
+        </div>
+      </header>
+
+      <main style={styles.main}>
+        {tab === "dashboard" && <Dashboard data={data} />}
+        {tab === "transactions" && (
+          <Transactions
+            data={data}
+            update={update}
+            onEdit={(t) => {
+              setEditingTxn(t);
+              setShowAdd(true);
+            }}
+          />
+        )}
+        {tab === "budgets" && <Budgets data={data} update={update} />}
+        {tab === "more" && <MorePanel data={data} update={update} />}
+      </main>
+
+      <button
+        style={styles.fab}
+        onClick={() => {
+          setEditingTxn(null);
+          setShowAdd(true);
+        }}
+        aria-label="Add transaction"
+      >
+        <PlusCircle size={26} />
+      </button>
+
+      <nav style={styles.nav}>
+        <NavBtn icon={Home} label="Home" active={tab === "dashboard"} onClick={() => setTab("dashboard")} />
+        <NavBtn icon={ListOrdered} label="Ledger" active={tab === "transactions"} onClick={() => setTab("transactions")} />
+        <div style={{ width: 56 }} />
+        <NavBtn icon={PiggyBank} label="Budgets" active={tab === "budgets"} onClick={() => setTab("budgets")} />
+        <NavBtn icon={Settings2} label="More" active={tab === "more"} onClick={() => setTab("more")} />
+      </nav>
+
+      {showAdd && (
+        <AddTransactionModal
+          data={data}
+          update={update}
+          editingTxn={editingTxn}
+          onClose={() => {
+            setShowAdd(false);
+            setEditingTxn(null);
+          }}
+        />
+      )}
+    </div>
+  );
 }
 
-/* ============== CSV parsing (no library) ============== */
-function parseCSV(text) {
-  const rows = [];
-  let row = [], field = "", inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i], next = text[i + 1];
-    if (inQuotes) {
-      if (c === '"' && next === '"') { field += '"'; i++; }
-      else if (c === '"') { inQuotes = false; }
-      else { field += c; }
-    } else {
-      if (c === '"') inQuotes = true;
-      else if (c === ",") { row.push(field); field = ""; }
-      else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
-      else if (c === "\r") { /* skip */ }
-      else field += c;
+function NavBtn({ icon: Icon, label, active, onClick }) {
+  return (
+    <button onClick={onClick} style={{ ...styles.navBtn, color: active ? "var(--ink)" : "var(--ink-soft)" }}>
+      <Icon size={20} strokeWidth={active ? 2.4 : 1.8} />
+      <span style={{ fontSize: 11, marginTop: 2 }}>{label}</span>
+      {active && <div style={styles.navDot} />}
+    </button>
+  );
+}
+
+/* ---------------- Dashboard ---------------- */
+
+function Dashboard({ data }) {
+  const netWorth = data.accounts.reduce((s, a) => s + accountBalance(a, data.transactions), 0);
+  const thisMonth = monthKey(todayStr());
+
+  const monthTxns = data.transactions.filter((t) => monthKey(t.date) === thisMonth);
+  const income = monthTxns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const expense = monthTxns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+
+  const catMap = Object.fromEntries(data.categories.map((c) => [c.id, c.name]));
+  const expenseByCat = {};
+  monthTxns
+    .filter((t) => t.type === "expense")
+    .forEach((t) => {
+      const name = catMap[t.categoryId] || "Uncategorized";
+      expenseByCat[name] = (expenseByCat[name] || 0) + t.amount;
+    });
+  const pieData = Object.entries(expenseByCat)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+
+  const last6 = useMemo(() => {
+    const out = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = localDateStr(d).slice(0, 7);
+      const label = d.toLocaleDateString("en-US", { month: "short" });
+      const inc = data.transactions.filter((t) => t.type === "income" && monthKey(t.date) === key).reduce((s, t) => s + t.amount, 0);
+      const exp = data.transactions.filter((t) => t.type === "expense" && monthKey(t.date) === key).reduce((s, t) => s + t.amount, 0);
+      out.push({ month: label, Income: inc, Expense: exp });
     }
-  }
-  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
-  if (rows.length === 0) return [];
-  const header = rows[0].map((h) => h.trim());
-  return rows.slice(1).filter((r) => r.length > 1 || (r[0] || "").trim() !== "").map((r) => {
-    const obj = {};
-    header.forEach((h, i) => { obj[h] = r[i] !== undefined ? r[i] : ""; });
-    return obj;
+    return out;
+  }, [data.transactions]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={styles.ledgerCard}>
+        <div style={styles.ledgerStitch} />
+        <div style={styles.ledgerSeal}>MH</div>
+        <div style={styles.ledgerLabel}>Net worth, across all accounts</div>
+        <div style={styles.ledgerAmount}>{fmt(netWorth)}</div>
+        <div style={styles.ledgerRow}>
+          <span style={{ color: "var(--credit)", display: "flex", alignItems: "center", gap: 4 }}>
+            <TrendingUp size={14} /> {fmt(income)} in
+          </span>
+          <span style={{ color: "var(--debit)", display: "flex", alignItems: "center", gap: 4 }}>
+            <TrendingDown size={14} /> {fmt(expense)} out
+          </span>
+        </div>
+      </div>
+
+      {ACCOUNT_TYPES.map((t) => {
+        const group = data.accounts.filter((a) => a.type === t);
+        if (group.length === 0) return null;
+        const groupTotal = group.reduce((s, a) => s + accountBalance(a, data.transactions), 0);
+        return (
+          <div key={t}>
+            <div style={{ ...styles.sectionLabel, display: "flex", justifyContent: "space-between" }}>
+              <span>{t}{t === "Person" ? " (owed / owing)" : "s"}</span>
+              <span style={{ fontFamily: "var(--mono)" }}>{fmt(groupTotal)}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {group.map((a) => {
+                const Icon = ACCOUNT_ICON[a.type] || Wallet;
+                const bal = accountBalance(a, data.transactions);
+                return (
+                  <div key={a.id} style={styles.accountRow}>
+                    <div style={styles.accountIconWrap}>
+                      <Icon size={17} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{a.name}</div>
+                    </div>
+                    <div style={{ fontFamily: "var(--mono)", fontWeight: 600, color: bal < 0 ? "var(--debit)" : "var(--ink)" }}>
+                      {fmt(bal)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      {pieData.length > 0 && (
+        <div style={styles.card}>
+          <div style={styles.sectionLabel}>This month's spending</div>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={45} outerRadius={75} paddingAngle={2}>
+                {pieData.map((_, i) => (
+                  <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(v) => fmt(v)} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={styles.legendWrap}>
+            {pieData.slice(0, 6).map((p, i) => (
+              <div key={p.name} style={styles.legendItem}>
+                <span style={{ ...styles.legendDot, background: PALETTE[i % PALETTE.length] }} />
+                <span style={{ flex: 1 }}>{p.name}</span>
+                <span style={{ fontFamily: "var(--mono)" }}>{fmt(p.value)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={styles.card}>
+        <div style={styles.sectionLabel}>Last 6 months</div>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={last6} barGap={2}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--paper-line)" vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--ink-soft)" }} axisLine={false} tickLine={false} />
+            <YAxis hide />
+            <Tooltip formatter={(v) => fmt(v)} />
+            <Bar dataKey="Income" fill="var(--credit)" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="Expense" fill="var(--debit)" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Transactions ---------------- */
+
+function Transactions({ data, update, onEdit }) {
+  const catMap = Object.fromEntries(data.categories.map((c) => [c.id, c.name]));
+  const accMap = Object.fromEntries(data.accounts.map((a) => [a.id, a.name]));
+
+  const sorted = [...data.transactions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  const groups = {};
+  sorted.forEach((t) => {
+    groups[t.date] = groups[t.date] || [];
+    groups[t.date].push(t);
   });
+
+  const remove = (id) => update((d) => ({ ...d, transactions: d.transactions.filter((t) => t.id !== id) }));
+
+  if (sorted.length === 0) {
+    return (
+      <div style={styles.emptyState}>
+        <FileSpreadsheet size={28} style={{ opacity: 0.5 }} />
+        <div style={{ marginTop: 8, fontWeight: 600 }}>No entries yet</div>
+        <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>Tap + to add your first transaction, or import a CSV from More.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      {Object.entries(groups).map(([date, txns]) => (
+        <div key={date}>
+          <div style={styles.dateHeading}>
+            {new Date(date).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {txns.map((t) => (
+              <div key={t.id} style={styles.txnRow} onClick={() => onEdit(t)}>
+                <div style={{ ...styles.txnIcon, background: t.type === "income" ? "var(--credit-bg)" : t.type === "expense" ? "var(--debit-bg)" : "var(--paper-line)" }}>
+                  {t.type === "income" && <ArrowDownRight size={16} color="var(--credit)" />}
+                  {t.type === "expense" && <ArrowUpRight size={16} color="var(--debit)" />}
+                  {t.type === "transfer" && <ArrowLeftRight size={16} color="var(--ink-soft)" />}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {t.type === "transfer"
+                      ? `${accMap[t.fromAccountId] || "?"} → ${accMap[t.toAccountId] || "?"}`
+                      : t.description || catMap[t.categoryId] || "Untitled"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--ink-soft)" }}>
+                    {t.type === "transfer" ? "Transfer" : `${catMap[t.categoryId] || "No category"} · ${accMap[t.accountId] || "?"}`}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    fontFamily: "var(--mono)",
+                    fontWeight: 700,
+                    color: t.type === "income" ? "var(--credit)" : t.type === "expense" ? "var(--debit)" : "var(--ink)",
+                  }}
+                >
+                  {t.type === "expense" ? "-" : t.type === "income" ? "+" : ""}
+                  {fmt(t.amount)}
+                </div>
+                <button
+                  style={styles.iconBtnGhost}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    remove(t.id);
+                  }}
+                  aria-label="Delete"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ---------------- Budgets ---------------- */
+
+function Budgets({ data, update }) {
+  const thisMonth = monthKey(todayStr());
+  const expenseCats = data.categories.filter((c) => c.kind === "expense");
+
+  const spendByCategory = (catId) =>
+    data.transactions
+      .filter((t) => t.type === "expense" && t.categoryId === catId && monthKey(t.date) === thisMonth)
+      .reduce((s, t) => s + t.amount, 0);
+
+  const setBudget = (catId, amount) =>
+    update((d) => {
+      const others = d.budgets.filter((b) => !(b.categoryId === catId && b.month === thisMonth));
+      const amt = Number(amount) || 0;
+      const budgets = amt > 0 ? [...others, { categoryId: catId, month: thisMonth, amount: amt }] : others;
+      return { ...d, budgets };
+    });
+
+  const budgetFor = (catId) => data.budgets.find((b) => b.categoryId === catId && b.month === thisMonth)?.amount || 0;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={styles.sectionLabel}>Budgets for {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}</div>
+      {expenseCats.map((c) => {
+        const budget = budgetFor(c.id);
+        const spent = spendByCategory(c.id);
+        const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
+        const over = budget > 0 && spent > budget;
+        return (
+          <div key={c.id} style={styles.card}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{c.name}</div>
+              <input
+                type="number"
+                placeholder="Set budget"
+                defaultValue={budget || ""}
+                onBlur={(e) => setBudget(c.id, e.target.value)}
+                style={styles.budgetInput}
+              />
+            </div>
+            {budget > 0 && (
+              <>
+                <div style={styles.progressTrack}>
+                  <div style={{ ...styles.progressFill, width: `${pct}%`, background: over ? "var(--debit)" : "var(--credit)" }} />
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--ink-soft)", marginTop: 4 }}>
+                  <span>{fmt(spent)} spent</span>
+                  <span>{over ? "over by " + fmt(spent - budget) : fmt(budget - spent) + " left"}</span>
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---------------- More: Accounts, Categories, Import ---------------- */
+
+function MorePanel({ data, update }) {
+  const [open, setOpen] = useState("accounts");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <Collapsible title="Accounts" icon={Wallet} open={open === "accounts"} onToggle={() => setOpen(open === "accounts" ? "" : "accounts")}>
+        <AccountsEditor data={data} update={update} />
+      </Collapsible>
+      <Collapsible title="Categories" icon={ListOrdered} open={open === "categories"} onToggle={() => setOpen(open === "categories" ? "" : "categories")}>
+        <CategoriesEditor data={data} update={update} />
+      </Collapsible>
+      <Collapsible title="Import from CSV" icon={Upload} open={open === "import"} onToggle={() => setOpen(open === "import" ? "" : "import")}>
+        <ImportPanel data={data} update={update} />
+      </Collapsible>
+      <Collapsible title="Backup & Restore" icon={Save} open={open === "backup"} onToggle={() => setOpen(open === "backup" ? "" : "backup")}>
+        <BackupPanel data={data} update={update} />
+      </Collapsible>
+    </div>
+  );
+}
+
+function Collapsible({ title, icon: Icon, open, onToggle, children }) {
+  return (
+    <div style={styles.card}>
+      <button onClick={onToggle} style={styles.collapsibleHeader}>
+        <Icon size={17} />
+        <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 14 }}>{title}</span>
+        {open ? <ChevronDown size={17} /> : <ChevronRight size={17} />}
+      </button>
+      {open && <div style={{ marginTop: 10 }}>{children}</div>}
+    </div>
+  );
+}
+
+function AccountsEditor({ data, update }) {
+  const [type, setType] = useState("Bank");
+  const [name, setName] = useState("");
+  const [pickMode, setPickMode] = useState(data.bankDirectory && data.bankDirectory.length > 0 ? "existing" : "new");
+  const [existingPick, setExistingPick] = useState(data.bankDirectory?.[0] || "");
+  const [opening, setOpening] = useState("");
+  const [editingId, setEditingId] = useState(null);
+
+  const isEditing = editingId !== null;
+  const usesDirectory = !isEditing && (type === "Bank" || type === "Person");
+  const directory = type === "Bank" ? data.bankDirectory : type === "Person" ? data.personDirectory : [];
+  const directoryKey = type === "Bank" ? "bankDirectory" : "personDirectory";
+
+  const resetForm = () => {
+    setEditingId(null);
+    setName("");
+    setOpening("");
+    setPickMode(null);
+  };
+
+  const startEdit = (a) => {
+    setEditingId(a.id);
+    setType(a.type);
+    setName(a.name);
+    setOpening(a.opening ? String(a.opening) : "");
+  };
+
+  const save = () => {
+    if (isEditing) {
+      const newName = name.trim();
+      if (!newName) return;
+      update((d) => {
+        const accounts = d.accounts.map((a) => (a.id === editingId ? { ...a, name: newName, type, opening: Number(opening) || 0 } : a));
+        const dirKey = type === "Bank" ? "bankDirectory" : type === "Person" ? "personDirectory" : null;
+        const patch = { ...d, accounts };
+        if (dirKey) {
+          const dir = d[dirKey] || [];
+          patch[dirKey] = dir.includes(newName) ? dir : [...dir, newName];
+        }
+        return patch;
+      });
+      resetForm();
+      return;
+    }
+    const finalName = usesDirectory && pickMode === "existing" ? existingPick : name.trim();
+    if (!finalName) return;
+    update((d) => {
+      const dir = d[directoryKey] || [];
+      const nextDir = usesDirectory && !dir.includes(finalName) ? [...dir, finalName] : dir;
+      return {
+        ...d,
+        accounts: [...d.accounts, { id: uid(), name: finalName, type, opening: Number(opening) || 0 }],
+        ...(usesDirectory ? { [directoryKey]: nextDir } : {}),
+      };
+    });
+    setName("");
+    setOpening("");
+  };
+
+  const remove = (id) => {
+    if (editingId === id) resetForm();
+    update((d) => ({ ...d, accounts: d.accounts.filter((a) => a.id !== id) }));
+  };
+
+  return (
+    <div>
+      {ACCOUNT_TYPES.map((t) => {
+        const group = data.accounts.filter((a) => a.type === t);
+        if (group.length === 0) return null;
+        return (
+          <div key={t} style={{ marginBottom: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", margin: "6px 0 2px" }}>{t}</div>
+            {group.map((a) => (
+              <div key={a.id} style={styles.editRow}>
+                <span style={{ flex: 1 }}>{a.name}</span>
+                <button style={styles.iconBtnGhost} onClick={() => startEdit(a)}><Pencil size={14} /></button>
+                <button style={styles.iconBtnGhost} onClick={() => remove(a.id)}><Trash2 size={14} /></button>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+
+      <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--paper-line)" }}>
+        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>{isEditing ? "Edit account" : "Add a new account"}</div>
+        <label style={styles.label}>Account type</label>
+        <select
+          style={styles.selectInput}
+          value={type}
+          onChange={(e) => {
+            const t = e.target.value;
+            setType(t);
+            if (!isEditing) {
+              const dir = t === "Bank" ? data.bankDirectory : t === "Person" ? data.personDirectory : [];
+              setPickMode(dir.length > 0 ? "existing" : "new");
+              setExistingPick(dir[0] || "");
+              setName("");
+            }
+          }}
+        >
+          {ACCOUNT_TYPES.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+
+        {usesDirectory && directory.length > 0 && (
+          <div style={styles.typeToggle}>
+            <button
+              style={{ ...styles.typeToggleBtn, background: pickMode === "existing" ? "var(--ink)" : "transparent", color: pickMode === "existing" ? "#fff" : "var(--ink)" }}
+              onClick={() => setPickMode("existing")}
+            >
+              Choose existing
+            </button>
+            <button
+              style={{ ...styles.typeToggleBtn, background: pickMode === "new" ? "var(--ink)" : "transparent", color: pickMode === "new" ? "#fff" : "var(--ink)" }}
+              onClick={() => setPickMode("new")}
+            >
+              Add new {type.toLowerCase()}
+            </button>
+          </div>
+        )}
+
+        <label style={styles.label}>{type === "Bank" ? "Bank name" : type === "Person" ? "Person's name" : "Account name"}</label>
+        {usesDirectory && pickMode === "existing" ? (
+          <select style={styles.selectInput} value={existingPick} onChange={(e) => setExistingPick(e.target.value)}>
+            {directory.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            style={styles.textInput}
+            placeholder={type === "Bank" ? "e.g. Bank Alfalah" : type === "Person" ? "e.g. Imran Jameel" : "Account name"}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        )}
+
+        <label style={styles.label}>Opening balance</label>
+        <input style={styles.textInput} type="number" placeholder="0" value={opening} onChange={(e) => setOpening(e.target.value)} />
+
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <button style={styles.primaryBtn} onClick={save}>
+            {isEditing ? <Check size={16} /> : <PlusCircle size={16} />} {isEditing ? "Save changes" : `Add ${type} account`}
+          </button>
+          {isEditing && (
+            <button style={{ ...styles.primaryBtn, background: "var(--ink-soft)" }} onClick={resetForm}>
+              <X size={16} /> Cancel
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CategoriesEditor({ data, update }) {
+  const [name, setName] = useState("");
+  const [kind, setKind] = useState("expense");
+
+  const add = () => {
+    if (!name.trim()) return;
+    update((d) => ({ ...d, categories: [...d.categories, { id: uid(), name: name.trim(), kind }] }));
+    setName("");
+  };
+  const remove = (id) => update((d) => ({ ...d, categories: d.categories.filter((c) => c.id !== id) }));
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--credit)", marginBottom: 4 }}>Income</div>
+      {data.categories.filter((c) => c.kind === "income").map((c) => (
+        <div key={c.id} style={styles.editRow}>
+          <span style={{ flex: 1 }}>{c.name}</span>
+          <button style={styles.iconBtnGhost} onClick={() => remove(c.id)}><Trash2 size={14} /></button>
+        </div>
+      ))}
+      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--debit)", margin: "10px 0 4px" }}>Expense</div>
+      {data.categories.filter((c) => c.kind === "expense").map((c) => (
+        <div key={c.id} style={styles.editRow}>
+          <span style={{ flex: 1 }}>{c.name}</span>
+          <button style={styles.iconBtnGhost} onClick={() => remove(c.id)}><Trash2 size={14} /></button>
+        </div>
+      ))}
+      <div style={styles.addRow}>
+        <input style={styles.textInput} placeholder="Category name" value={name} onChange={(e) => setName(e.target.value)} />
+        <select style={styles.selectInput} value={kind} onChange={(e) => setKind(e.target.value)}>
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+        </select>
+        <button style={styles.smallBtn} onClick={add}><PlusCircle size={16} /></button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- CSV Import ---------------- */
+
+function ImportPanel({ data, update }) {
+  const [preview, setPreview] = useState(null);
+  const [error, setError] = useState("");
+  const fileRef = useRef(null);
+
+  const handleFile = (file) => {
+    setError("");
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (res) => {
+        try {
+          const built = buildImportPlan(res.data, data);
+          setPreview(built);
+        } catch (e) {
+          setError("Could not read that file. Expected columns: Voucher Type, Voucher Date, Voucher Amount, Description, Category Name, Account Name.");
+        }
+      },
+      error: () => setError("Could not parse the CSV file."),
+    });
+  };
+
+  const confirmImport = () => {
+    if (!preview) return;
+    update((d) => {
+      const newPersonNames = preview.newAccounts.filter((a) => a.type === "Person").map((a) => a.name);
+      const personDirectory = [...new Set([...(d.personDirectory || []), ...newPersonNames])];
+      return {
+        ...d,
+        accounts: [...d.accounts, ...preview.newAccounts],
+        categories: [...d.categories, ...preview.newCategories],
+        transactions: [...d.transactions, ...preview.transactions],
+        personDirectory,
+      };
+    });
+    setPreview(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  return (
+    <div>
+      <p style={{ fontSize: 12.5, color: "var(--ink-soft)", marginBottom: 8 }}>
+        Upload a CSV with columns: <b>Voucher Type</b> (Income/Expense/Transfer), <b>Voucher Date</b> (DD/MM/YYYY),{" "}
+        <b>Voucher Amount</b>, <b>Description</b>, <b>Category Name</b>, <b>Account Name</b>. Any account name not
+        already in your list gets created as a "Person" type account by default — if one is actually a Bank or Cash
+        account, delete it under More → Accounts afterward and re-add it with the right type. Unknown categories are
+        created automatically too.
+      </p>
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".csv"
+        onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])}
+        style={{ fontSize: 13 }}
+      />
+      {error && (
+        <div style={styles.errorBox}>
+          <AlertCircle size={15} /> <span>{error}</span>
+        </div>
+      )}
+      {preview && (
+        <div style={{ marginTop: 12 }}>
+          <div style={styles.importSummary}>
+            <div>{preview.transactions.length} transactions ready to import</div>
+            <div style={{ color: "var(--ink-soft)" }}>{preview.newAccounts.length} new account(s), {preview.newCategories.length} new categor{preview.newCategories.length === 1 ? "y" : "ies"}</div>
+            {preview.skipped.length > 0 && (
+              <div style={{ color: "var(--debit)" }}>{preview.skipped.length} row(s) skipped (unpaired transfer or unreadable row)</div>
+            )}
+          </div>
+          <button style={styles.primaryBtn} onClick={confirmImport}>
+            <Check size={16} /> Import {preview.transactions.length} transactions
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function parseDDMMYYYY(s) {
   const parts = (s || "").trim().split("/");
   if (parts.length !== 3) return null;
-  const d = parseInt(parts[0], 10), m = parseInt(parts[1], 10), y = parseInt(parts[2], 10);
+  const [d, m, y] = parts.map((p) => parseInt(p, 10));
   if (!d || !m || !y) return null;
-  return y + "-" + String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
 function buildImportPlan(rows, data) {
-  const accountsByName = {}; data.accounts.forEach((a) => { accountsByName[a.name.toLowerCase()] = a; });
-  const categoriesByName = {}; data.categories.forEach((c) => { categoriesByName[c.name.toLowerCase()] = c; });
-  const newAccounts = [], newCategories = [], transactions = [], skipped = [];
+  const accountsByName = Object.fromEntries(data.accounts.map((a) => [a.name.toLowerCase(), a]));
+  const categoriesByName = Object.fromEntries(data.categories.map((c) => [c.name.toLowerCase(), c]));
+  const newAccounts = [];
+  const newCategories = [];
+  const transactions = [];
+  const skipped = [];
 
-  function getAccount(name) {
+  const getAccount = (name) => {
     const key = (name || "").trim().toLowerCase();
     if (!key) return null;
     if (accountsByName[key]) return accountsByName[key];
     const existing = newAccounts.find((a) => a.name.toLowerCase() === key);
     if (existing) return existing;
     const acc = { id: uid(), name: name.trim(), type: "Person", opening: 0 };
-    newAccounts.push(acc); accountsByName[key] = acc;
+    newAccounts.push(acc);
+    accountsByName[key] = acc;
     return acc;
-  }
-  function getCategory(name, kind) {
+  };
+
+  const getCategory = (name, kind) => {
     const key = (name || "").trim().toLowerCase();
     if (!key || key === "no category") return null;
     if (categoriesByName[key]) return categoriesByName[key];
     const existing = newCategories.find((c) => c.name.toLowerCase() === key);
     if (existing) return existing;
     const cat = { id: uid(), name: name.trim(), kind };
-    newCategories.push(cat); categoriesByName[key] = cat;
+    newCategories.push(cat);
+    categoriesByName[key] = cat;
     return cat;
-  }
+  };
 
+  // Pair up consecutive Transfer rows with matching date and opposite amount
   const used = new Array(rows.length).fill(false);
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
@@ -311,24 +1971,45 @@ function buildImportPlan(rows, data) {
     if (vtype !== "Transfer" || used[i]) continue;
     const date = parseDDMMYYYY(r["Voucher Date"]);
     const amt = parseFloat(r["Voucher Amount"]);
-    if (!date || isNaN(amt)) { skipped.push(r); used[i] = true; continue; }
+    if (!date || isNaN(amt)) {
+      skipped.push(r);
+      used[i] = true;
+      continue;
+    }
     let pairIdx = -1;
     for (let j = i + 1; j < rows.length && j <= i + 4; j++) {
       if (used[j]) continue;
       const r2 = rows[j];
       if ((r2["Voucher Type"] || "").trim() !== "Transfer") break;
       const amt2 = parseFloat(r2["Voucher Amount"]);
-      if (parseDDMMYYYY(r2["Voucher Date"]) === date && Math.abs(amt + amt2) < 0.01) { pairIdx = j; break; }
+      if (parseDDMMYYYY(r2["Voucher Date"]) === date && Math.abs(amt + amt2) < 0.01) {
+        pairIdx = j;
+        break;
+      }
     }
-    if (pairIdx === -1) { skipped.push(r); used[i] = true; continue; }
+    if (pairIdx === -1) {
+      skipped.push(r);
+      used[i] = true;
+      continue;
+    }
     const r2 = rows[pairIdx];
-    used[i] = true; used[pairIdx] = true;
-    const fromRow = amt < 0 ? r : r2, toRow = amt < 0 ? r2 : r;
-    const fromAcc = getAccount(fromRow["Account Name"]), toAcc = getAccount(toRow["Account Name"]);
-    if (!fromAcc || !toAcc) { skipped.push(r); continue; }
+    used[i] = true;
+    used[pairIdx] = true;
+    const fromRow = amt < 0 ? r : r2;
+    const toRow = amt < 0 ? r2 : r;
+    const fromAcc = getAccount(fromRow["Account Name"]);
+    const toAcc = getAccount(toRow["Account Name"]);
+    if (!fromAcc || !toAcc) {
+      skipped.push(r);
+      continue;
+    }
     transactions.push({
-      id: uid(), type: "transfer", date, amount: Math.abs(amt),
-      fromAccountId: fromAcc.id, toAccountId: toAcc.id,
+      id: uid(),
+      type: "transfer",
+      date,
+      amount: Math.abs(amt),
+      fromAccountId: fromAcc.id,
+      toAccountId: toAcc.id,
       description: (fromRow["Description"] || toRow["Description"] || "").trim(),
     });
   }
@@ -338,14 +2019,24 @@ function buildImportPlan(rows, data) {
     const vtype = (r["Voucher Type"] || "").trim();
     const date = parseDDMMYYYY(r["Voucher Date"]);
     const amt = parseFloat(r["Voucher Amount"]);
-    if (!date || isNaN(amt) || (vtype !== "Income" && vtype !== "Expense")) { skipped.push(r); return; }
+    if (!date || isNaN(amt) || (vtype !== "Income" && vtype !== "Expense")) {
+      skipped.push(r);
+      return;
+    }
     const acc = getAccount(r["Account Name"]);
-    if (!acc) { skipped.push(r); return; }
+    if (!acc) {
+      skipped.push(r);
+      return;
+    }
     const kind = vtype === "Income" ? "income" : "expense";
     const cat = getCategory(r["Category Name"], kind);
     transactions.push({
-      id: uid(), type: kind, date, amount: Math.abs(amt),
-      accountId: acc.id, categoryId: cat ? cat.id : null,
+      id: uid(),
+      type: kind,
+      date,
+      amount: Math.abs(amt),
+      accountId: acc.id,
+      categoryId: cat ? cat.id : null,
       description: (r["Description"] || "").trim(),
     });
   });
@@ -353,677 +2044,362 @@ function buildImportPlan(rows, data) {
   return { newAccounts, newCategories, transactions, skipped };
 }
 
-/* ============== App state (UI) ============== */
-let currentTab = "dashboard";
-let modalState = null; // { editingTxn } or null
-let morePanelOpen = "accounts";
-let importPreview = null;
-let importError = "";
-let backupPending = null;
-let backupError = "";
-let justExported = false;
+/* ---------------- Backup & Restore ---------------- */
 
-function esc(s) {
-  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
+function BackupPanel({ data, update }) {
+  const fileRef = useRef(null);
+  const [pendingRestore, setPendingRestore] = useState(null);
+  const [error, setError] = useState("");
+  const [justExported, setJustExported] = useState(false);
 
-/* ============== Render ============== */
-function render() {
-  const app = document.getElementById("app");
-  app.innerHTML =
-    '<div class="header">' +
-      '<div class="header-badge">MH</div>' +
-      '<div><div class="header-title">Mera Hysab</div><div class="header-sub">your ledger, your rules</div></div>' +
-    "</div>" +
-    '<div class="main" id="main">' + renderTab() + "</div>" +
-    '<button class="fab" id="fabBtn" aria-label="Add transaction">' + icon("plus", 26) + "</button>" +
-    '<nav class="nav">' +
-      navBtn("home", "Home", "dashboard") +
-      navBtn("list", "Ledger", "transactions") +
-      '<div style="width:56px"></div>' +
-      navBtn("piggy", "Budgets", "budgets") +
-      navBtn("settings", "More", "more") +
-    "</nav>" +
-    (modalState ? renderModal() : "");
-
-  document.getElementById("fabBtn").onclick = () => { modalState = { editingTxn: null }; render(); };
-  document.querySelectorAll(".nav-btn").forEach((btn) => {
-    btn.onclick = () => { currentTab = btn.getAttribute("data-tab"); render(); };
-  });
-  wireTabEvents();
-  if (modalState) wireModalEvents();
-}
-function navBtn(iconName, label, tab) {
-  const active = currentTab === tab;
-  return '<button class="nav-btn' + (active ? " active" : "") + '" data-tab="' + tab + '">' +
-    icon(iconName, 20) + "<span>" + label + "</span>" + (active ? '<div class="nav-dot"></div>' : "") + "</button>";
-}
-
-function renderTab() {
-  if (currentTab === "dashboard") return renderDashboard();
-  if (currentTab === "transactions") return renderTransactions();
-  if (currentTab === "budgets") return renderBudgets();
-  if (currentTab === "more") return renderMore();
-  return "";
-}
-function wireTabEvents() {
-  if (currentTab === "transactions") wireTransactionEvents();
-  if (currentTab === "budgets") wireBudgetEvents();
-  if (currentTab === "more") wireMoreEvents();
-}
-
-/* ---------------- Dashboard ---------------- */
-function renderDashboard() {
-  const netWorth = state.accounts.reduce((s, a) => s + accountBalance(a, state.transactions), 0);
-  const thisMonth = monthKey(todayStr());
-  const monthTxns = state.transactions.filter((t) => monthKey(t.date) === thisMonth);
-  const income = monthTxns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
-  const expense = monthTxns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-
-  const catMap = {}; state.categories.forEach((c) => { catMap[c.id] = c.name; });
-  const expenseByCat = {};
-  monthTxns.filter((t) => t.type === "expense").forEach((t) => {
-    const name = catMap[t.categoryId] || "Uncategorized";
-    expenseByCat[name] = (expenseByCat[name] || 0) + t.amount;
-  });
-  const pieData = Object.entries(expenseByCat).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-
-  const now = new Date(); const last6 = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = d.toISOString().slice(0, 7);
-    const label = d.toLocaleDateString("en-US", { month: "short" });
-    const inc = state.transactions.filter((t) => t.type === "income" && monthKey(t.date) === key).reduce((s, t) => s + t.amount, 0);
-    const exp = state.transactions.filter((t) => t.type === "expense" && monthKey(t.date) === key).reduce((s, t) => s + t.amount, 0);
-    last6.push({ month: label, income: inc, expense: exp });
-  }
-
-  let accountsHtml = "";
-  ACCOUNT_TYPES.forEach((t) => {
-    const group = state.accounts.filter((a) => a.type === t);
-    if (group.length === 0) return;
-    const groupTotal = group.reduce((s, a) => s + accountBalance(a, state.transactions), 0);
-    accountsHtml += '<div class="section-label"><span>' + t + (t === "Person" ? " (owed / owing)" : "s") + "</span><span style=\"font-family:var(--mono)\">" + fmt(groupTotal) + "</span></div>";
-    accountsHtml += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:6px;">';
-    group.forEach((a) => {
-      const bal = accountBalance(a, state.transactions);
-      accountsHtml += '<div class="account-row"><div class="account-icon-wrap">' + icon(ACCOUNT_ICON[a.type] || "wallet", 17) +
-        '</div><div style="flex:1"><div style="font-weight:600;font-size:14px">' + esc(a.name) + "</div></div>" +
-        '<div style="font-family:var(--mono);font-weight:600;color:' + (bal < 0 ? "var(--debit)" : "var(--ink)") + '">' + fmt(bal) + "</div></div>";
-    });
-    accountsHtml += "</div>";
-  });
-
-  let pieHtml = "";
-  if (pieData.length > 0) {
-    let legend = "";
-    pieData.slice(0, 6).forEach((p, i) => {
-      legend += '<div class="legend-item"><span class="legend-dot" style="background:' + PALETTE[i % PALETTE.length] + '"></span><span style="flex:1">' + esc(p.name) + '</span><span style="font-family:var(--mono)">' + fmt(p.value) + "</span></div>";
-    });
-    pieHtml = '<div class="card"><div class="section-label"><span>This month\u2019s spending</span></div>' + buildPieSVG(pieData) +
-      '<div style="display:flex;flex-direction:column;gap:5px;margin-top:6px;">' + legend + "</div></div>";
-  }
-
-  const barHtml = '<div class="card"><div class="section-label"><span>Last 6 months</span></div>' + buildBarSVG(last6) +
-    '<div style="display:flex;gap:14px;font-size:11px;color:var(--ink-soft);margin-top:4px;justify-content:center;">' +
-    '<span><span style="display:inline-block;width:8px;height:8px;background:#2F5233;border-radius:2px;margin-right:4px;"></span>Income</span>' +
-    '<span><span style="display:inline-block;width:8px;height:8px;background:#8B2E28;border-radius:2px;margin-right:4px;"></span>Expense</span></div></div>';
-
-  return '<div class="ledger-card"><div class="ledger-stitch"></div><div class="ledger-seal">MH</div>' +
-    '<div class="ledger-label">Net worth, across all accounts</div>' +
-    '<div class="ledger-amount">' + fmt(netWorth) + "</div>" +
-    '<div class="ledger-row"><span style="color:var(--credit);display:flex;align-items:center;gap:4px">' + icon("arrowDownRight", 14) + fmt(income) + " in</span>" +
-    '<span style="color:var(--debit);display:flex;align-items:center;gap:4px">' + icon("arrowUpRight", 14) + fmt(expense) + " out</span></div></div>" +
-    accountsHtml + pieHtml + barHtml;
-}
-
-/* ---------------- Transactions ---------------- */
-function renderTransactions() {
-  const catMap = {}; state.categories.forEach((c) => { catMap[c.id] = c.name; });
-  const accMap = {}; state.accounts.forEach((a) => { accMap[a.id] = a.name; });
-  const sorted = state.transactions.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-
-  if (sorted.length === 0) {
-    return '<div class="empty-state">' + icon("sheet", 28) + '<div style="margin-top:8px;font-weight:600">No entries yet</div>' +
-      '<div style="font-size:13px;color:var(--ink-soft)">Tap + to add your first transaction, or import a CSV from More.</div></div>';
-  }
-
-  const groups = {};
-  sorted.forEach((t) => { (groups[t.date] = groups[t.date] || []).push(t); });
-
-  let html = "";
-  Object.keys(groups).forEach((date) => {
-    const label = new Date(date).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-    html += '<div><div class="date-heading">' + label + '</div><div style="display:flex;flex-direction:column;gap:6px;">';
-    groups[date].forEach((t) => {
-      const isTransfer = t.type === "transfer";
-      const title = isTransfer ? (esc(accMap[t.fromAccountId] || "?") + " \u2192 " + esc(accMap[t.toAccountId] || "?"))
-        : esc(t.description || catMap[t.categoryId] || "Untitled");
-      const sub = isTransfer ? "Transfer" : (esc(catMap[t.categoryId] || "No category") + " \u00b7 " + esc(accMap[t.accountId] || "?"));
-      const amtColor = t.type === "income" ? "var(--credit)" : t.type === "expense" ? "var(--debit)" : "var(--ink)";
-      const sign = t.type === "expense" ? "-" : t.type === "income" ? "+" : "";
-      const iconName = t.type === "income" ? "arrowDownRight" : t.type === "expense" ? "arrowUpRight" : "swap";
-      const iconColor = t.type === "income" ? "var(--credit)" : t.type === "expense" ? "var(--debit)" : "var(--ink-soft)";
-      const iconBg = t.type === "income" ? "var(--credit-bg)" : t.type === "expense" ? "var(--debit-bg)" : "var(--paper-line)";
-      html += '<div class="txn-row" data-edit-id="' + t.id + '">' +
-        '<div class="txn-icon" style="background:' + iconBg + ';color:' + iconColor + '">' + icon(iconName, 16) + "</div>" +
-        '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + title + '</div>' +
-        '<div style="font-size:11px;color:var(--ink-soft)">' + sub + "</div></div>" +
-        '<div style="font-family:var(--mono);font-weight:700;color:' + amtColor + '">' + sign + fmt(t.amount) + "</div>" +
-        '<button class="icon-btn-ghost" data-del-id="' + t.id + '" aria-label="Delete">' + icon("trash", 15) + "</button></div>";
-    });
-    html += "</div></div>";
-  });
-  return html;
-}
-function wireTransactionEvents() {
-  document.querySelectorAll("[data-del-id]").forEach((btn) => {
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      const id = btn.getAttribute("data-del-id");
-      update((d) => Object.assign({}, d, { transactions: d.transactions.filter((t) => t.id !== id) }));
-    };
-  });
-  document.querySelectorAll("[data-edit-id]").forEach((row) => {
-    row.onclick = () => {
-      const id = row.getAttribute("data-edit-id");
-      const t = state.transactions.find((x) => x.id === id);
-      modalState = { editingTxn: t || null };
-      render();
-    };
-  });
-}
-
-/* ---------------- Budgets ---------------- */
-function renderBudgets() {
-  const thisMonth = monthKey(todayStr());
-  const expenseCats = state.categories.filter((c) => c.kind === "expense");
-  const spendByCategory = (catId) => state.transactions
-    .filter((t) => t.type === "expense" && t.categoryId === catId && monthKey(t.date) === thisMonth)
-    .reduce((s, t) => s + t.amount, 0);
-  const budgetFor = (catId) => {
-    const b = state.budgets.find((b) => b.categoryId === catId && b.month === thisMonth);
-    return b ? b.amount : 0;
+  const doExport = () => {
+    const payload = JSON.stringify(data, null, 2);
+    const blob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `mera-hysab-backup-${todayStr()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setJustExported(true);
+    setTimeout(() => setJustExported(false), 2500);
   };
 
-  const monthLabel = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  let html = '<div class="section-label"><span>Budgets for ' + monthLabel + "</span></div>";
-  expenseCats.forEach((c) => {
-    const budget = budgetFor(c.id);
-    const spent = spendByCategory(c.id);
-    const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
-    const over = budget > 0 && spent > budget;
-    html += '<div class="card" style="margin-bottom:10px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
-      '<div style="font-weight:600;font-size:14px">' + esc(c.name) + "</div>" +
-      '<input class="budget-input" type="number" placeholder="Set budget" data-budget-cat="' + c.id + '" value="' + (budget || "") + '" />' +
-      "</div>";
-    if (budget > 0) {
-      html += '<div class="progress-track"><div class="progress-fill" style="width:' + pct + "%;background:" + (over ? "var(--debit)" : "var(--credit)") + ';"></div></div>' +
-        '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft);margin-top:4px;">' +
-        "<span>" + fmt(spent) + " spent</span><span>" + (over ? "over by " + fmt(spent - budget) : fmt(budget - spent) + " left") + "</span></div>";
-    }
-    html += "</div>";
-  });
-  return html;
-}
-function wireBudgetEvents() {
-  document.querySelectorAll("[data-budget-cat]").forEach((input) => {
-    input.onblur = () => {
-      const catId = input.getAttribute("data-budget-cat");
-      const thisMonth = monthKey(todayStr());
-      const amt = Number(input.value) || 0;
-      update((d) => {
-        const others = d.budgets.filter((b) => !(b.categoryId === catId && b.month === thisMonth));
-        const budgets = amt > 0 ? others.concat([{ categoryId: catId, month: thisMonth, amount: amt }]) : others;
-        return Object.assign({}, d, { budgets });
-      });
-    };
-  });
-}
-
-/* ---------------- More: Accounts / Categories / Import / Backup ---------------- */
-function renderMore() {
-  return collapsible("accounts", "wallet", "Accounts", renderAccountsEditor()) +
-    collapsible("categories", "list", "Categories", renderCategoriesEditor()) +
-    collapsible("import", "upload", "Import from CSV", renderImportPanel()) +
-    collapsible("backup", "save", "Backup & Restore", renderBackupPanel());
-}
-function collapsible(key, iconName, title, innerHtml) {
-  const open = morePanelOpen === key;
-  return '<div class="card"><button class="collapsible-header" data-toggle="' + key + '">' + icon(iconName, 17) +
-    '<span style="flex:1;text-align:left;font-weight:600;font-size:14px">' + title + "</span>" +
-    icon(open ? "chevronDown" : "chevronRight", 17) + "</button>" +
-    (open ? '<div style="margin-top:10px;">' + innerHtml + "</div>" : "") + "</div>";
-}
-
-let acctFormType = "Bank";
-let acctFormPickMode = null; // computed lazily
-let acctFormName = "";
-let acctFormExisting = "";
-let acctFormOpening = "";
-let acctEditingId = null; // null = "add new" mode; otherwise the account id being edited
-
-function renderAccountsEditor() {
-  if (acctFormPickMode === null) {
-    const dir = acctFormType === "Bank" ? state.bankDirectory : acctFormType === "Person" ? state.personDirectory : [];
-    acctFormPickMode = dir.length > 0 ? "existing" : "new";
-    acctFormExisting = dir[0] || "";
-  }
-  const isEditing = acctEditingId !== null;
-  let html = "";
-  ACCOUNT_TYPES.forEach((t) => {
-    const group = state.accounts.filter((a) => a.type === t);
-    if (group.length === 0) return;
-    html += '<div style="font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;margin:6px 0 2px;">' + t + "</div>";
-    group.forEach((a) => {
-      html += '<div class="edit-row"><span style="flex:1">' + esc(a.name) + '</span>' +
-        '<button class="icon-btn-ghost" data-edit-acc="' + a.id + '">' + icon("pencil", 14) + "</button>" +
-        '<button class="icon-btn-ghost" data-del-acc="' + a.id + '">' + icon("trash", 14) + "</button></div>";
-    });
-  });
-
-  const usesDirectory = !isEditing && (acctFormType === "Bank" || acctFormType === "Person");
-  const directory = acctFormType === "Bank" ? state.bankDirectory : acctFormType === "Person" ? state.personDirectory : [];
-
-  html += '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--paper-line);">' +
-    '<div style="font-weight:600;font-size:13px;margin-bottom:6px;">' + (isEditing ? "Edit account" : "Add a new account") + "</div>" +
-    '<label class="field-label">Account type</label>' +
-    '<select class="select-input" id="acctType">' + ACCOUNT_TYPES.map((t) => '<option value="' + t + '"' + (t === acctFormType ? " selected" : "") + ">" + t + "</option>").join("") + "</select>";
-
-  if (usesDirectory && directory.length > 0) {
-    html += '<div class="type-toggle">' +
-      '<button class="type-toggle-btn" id="acctPickExisting" style="background:' + (acctFormPickMode === "existing" ? "var(--ink)" : "transparent") + ";color:" + (acctFormPickMode === "existing" ? "#fff" : "var(--ink)") + ';">Choose existing</button>' +
-      '<button class="type-toggle-btn" id="acctPickNew" style="background:' + (acctFormPickMode === "new" ? "var(--ink)" : "transparent") + ";color:" + (acctFormPickMode === "new" ? "#fff" : "var(--ink)") + ';">Add new ' + acctFormType.toLowerCase() + "</button></div>";
-  }
-
-  html += '<label class="field-label">' + (acctFormType === "Bank" ? "Bank name" : acctFormType === "Person" ? "Person\u2019s name" : "Account name") + "</label>";
-  if (usesDirectory && acctFormPickMode === "existing") {
-    html += '<select class="select-input" id="acctExisting">' + directory.map((n) => '<option value="' + esc(n) + '"' + (n === acctFormExisting ? " selected" : "") + ">" + esc(n) + "</option>").join("") + "</select>";
-  } else {
-    html += '<input class="text-input" id="acctName" placeholder="' + (acctFormType === "Bank" ? "e.g. Bank Alfalah" : acctFormType === "Person" ? "e.g. Imran Jameel" : "Account name") + '" value="' + esc(acctFormName) + '" />';
-  }
-
-  html += '<label class="field-label">Opening balance</label>' +
-    '<input class="text-input" type="number" id="acctOpening" placeholder="0" value="' + esc(acctFormOpening) + '" />' +
-    '<div style="display:flex;gap:8px;margin-top:12px;">' +
-    '<button class="primary-btn" id="acctAddBtn">' + icon(isEditing ? "check" : "plus", 16) + " " + (isEditing ? "Save changes" : "Add " + acctFormType + " account") + "</button>" +
-    (isEditing ? '<button class="primary-btn" id="acctCancelBtn" style="background:var(--ink-soft);">' + icon("x", 16) + " Cancel</button>" : "") +
-    "</div></div>";
-
-  return html;
-}
-
-function renderCategoriesEditor() {
-  let html = '<div style="font-size:12px;font-weight:700;color:var(--credit);margin-bottom:4px;">Income</div>';
-  state.categories.filter((c) => c.kind === "income").forEach((c) => {
-    html += '<div class="edit-row"><span style="flex:1">' + esc(c.name) + '</span><button class="icon-btn-ghost" data-del-cat="' + c.id + '">' + icon("trash", 14) + "</button></div>";
-  });
-  html += '<div style="font-size:12px;font-weight:700;color:var(--debit);margin:10px 0 4px;">Expense</div>';
-  state.categories.filter((c) => c.kind === "expense").forEach((c) => {
-    html += '<div class="edit-row"><span style="flex:1">' + esc(c.name) + '</span><button class="icon-btn-ghost" data-del-cat="' + c.id + '">' + icon("trash", 14) + "</button></div>";
-  });
-  html += '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">' +
-    '<input class="text-input" id="catName" placeholder="Category name" style="flex:2;min-width:120px;" />' +
-    '<select class="select-input" id="catKind" style="flex:1;min-width:100px;"><option value="expense">Expense</option><option value="income">Income</option></select>' +
-    '<button class="small-btn" id="catAddBtn">' + icon("plus", 16) + "</button></div>";
-  return html;
-}
-
-function renderImportPanel() {
-  let html = '<p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:8px;">' +
-    "Upload a CSV with columns: <b>Voucher Type</b> (Income/Expense/Transfer), <b>Voucher Date</b> (DD/MM/YYYY), <b>Voucher Amount</b>, <b>Description</b>, <b>Category Name</b>, <b>Account Name</b>. " +
-    'Any account name not already in your list gets created as a "Person" type account by default \u2014 if one is actually a Bank or Cash account, delete it afterward and re-add it with the right type. Unknown categories are created automatically too.</p>' +
-    '<input type="file" accept=".csv" id="csvFileInput" style="font-size:13px;" />';
-  if (importError) html += '<div class="error-box">' + icon("alert", 15) + "<span>" + esc(importError) + "</span></div>";
-  if (importPreview) {
-    html += '<div style="margin-top:12px;"><div class="import-summary"><div>' + importPreview.transactions.length + " transactions ready to import</div>" +
-      '<div style="color:var(--ink-soft)">' + importPreview.newAccounts.length + " new account(s), " + importPreview.newCategories.length + " new categor" + (importPreview.newCategories.length === 1 ? "y" : "ies") + "</div>";
-    if (importPreview.skipped.length > 0) {
-      html += '<div style="color:var(--debit)">' + importPreview.skipped.length + " row(s) skipped (unpaired transfer or unreadable row)</div>";
-    }
-    html += '</div><button class="primary-btn" id="csvConfirmBtn">' + icon("check", 16) + " Import " + importPreview.transactions.length + " transactions</button></div>";
-  }
-  return html;
-}
-
-function renderBackupPanel() {
-  let html = '<p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:8px;">' +
-    "Download a complete copy of your accounts, categories, transactions, and budgets. Keep it somewhere safe. You can restore from it any time, on any device.</p>" +
-    '<button class="primary-btn" id="backupExportBtn">' + icon("download", 16) + " " + (justExported ? "Downloaded \u2713" : "Download backup (.json)") + "</button>" +
-    '<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--paper-line);">' +
-    '<div style="font-weight:600;font-size:13px;margin-bottom:8px;">Restore from a backup file</div>' +
-    '<input type="file" accept=".json,application/json" id="backupFileInput" style="font-size:13px;" />';
-  if (backupError) html += '<div class="error-box">' + icon("alert", 15) + "<span>" + esc(backupError) + "</span></div>";
-  if (backupPending) {
-    html += '<div style="margin-top:10px;"><div class="import-summary"><div style="color:var(--debit);font-weight:700;">This replaces everything currently in the app with the backup:</div>' +
-      "<div>" + backupPending.accounts.length + " accounts \u00b7 " + backupPending.categories.length + " categories \u00b7 " + backupPending.transactions.length + " transactions \u00b7 " + backupPending.budgets.length + " budgets</div></div>" +
-      '<div style="display:flex;gap:8px;"><button class="primary-btn" id="backupRestoreBtn" style="background:var(--debit);">' + icon("check", 16) + " Restore this backup</button>" +
-      '<button class="primary-btn" id="backupCancelBtn" style="background:var(--ink-soft);">' + icon("x", 16) + " Cancel</button></div></div>";
-  }
-  html += "</div>";
-  return html;
-}
-
-function wireMoreEvents() {
-  document.querySelectorAll("[data-toggle]").forEach((btn) => {
-    btn.onclick = () => { morePanelOpen = morePanelOpen === btn.getAttribute("data-toggle") ? "" : btn.getAttribute("data-toggle"); render(); };
-  });
-
-  if (morePanelOpen === "accounts") {
-    const typeSel = document.getElementById("acctType");
-    if (typeSel) typeSel.onchange = () => {
-      acctFormType = typeSel.value;
-      const dir = acctFormType === "Bank" ? state.bankDirectory : acctFormType === "Person" ? state.personDirectory : [];
-      acctFormPickMode = dir.length > 0 ? "existing" : "new";
-      acctFormExisting = dir[0] || "";
-      if (acctEditingId === null) acctFormName = "";
-      render();
-    };
-    const pickExisting = document.getElementById("acctPickExisting");
-    if (pickExisting) pickExisting.onclick = () => { acctFormPickMode = "existing"; render(); };
-    const pickNew = document.getElementById("acctPickNew");
-    if (pickNew) pickNew.onclick = () => { acctFormPickMode = "new"; render(); };
-    const nameInput = document.getElementById("acctName");
-    if (nameInput) nameInput.oninput = () => { acctFormName = nameInput.value; };
-    const existingSel = document.getElementById("acctExisting");
-    if (existingSel) existingSel.onchange = () => { acctFormExisting = existingSel.value; };
-    const openingInput = document.getElementById("acctOpening");
-    if (openingInput) openingInput.oninput = () => { acctFormOpening = openingInput.value; };
-    const addBtn = document.getElementById("acctAddBtn");
-    if (addBtn) addBtn.onclick = () => {
-      if (acctEditingId !== null) {
-        const newName = acctFormName.trim();
-        if (!newName) return;
-        const directoryKey = acctFormType === "Bank" ? "bankDirectory" : acctFormType === "Person" ? "personDirectory" : null;
-        const editId = acctEditingId;
-        update((d) => {
-          const next = Object.assign({}, d, {
-            accounts: d.accounts.map((a) => (a.id === editId ? Object.assign({}, a, { name: newName, type: acctFormType, opening: Number(acctFormOpening) || 0 }) : a)),
-          });
-          if (directoryKey) {
-            const dir = d[directoryKey] || [];
-            next[directoryKey] = dir.includes(newName) ? dir : dir.concat([newName]);
-          }
-          return next;
-        });
-        acctEditingId = null; acctFormName = ""; acctFormOpening = ""; acctFormPickMode = null;
-        return;
+  const handleFile = (file) => {
+    setError("");
+    setPendingRestore(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        if (!Array.isArray(parsed.accounts) || !Array.isArray(parsed.transactions) || !Array.isArray(parsed.categories)) {
+          throw new Error("unexpected shape");
+        }
+        setPendingRestore(withDefaults(parsed));
+      } catch (e) {
+        setError("That doesn't look like a valid Mera Hysab backup file.");
       }
-      const usesDirectory = acctFormType === "Bank" || acctFormType === "Person";
-      const finalName = usesDirectory && acctFormPickMode === "existing" ? acctFormExisting : acctFormName.trim();
-      if (!finalName) return;
-      const directoryKey = acctFormType === "Bank" ? "bankDirectory" : acctFormType === "Person" ? "personDirectory" : null;
-      update((d) => {
-        const next = Object.assign({}, d, { accounts: d.accounts.concat([{ id: uid(), name: finalName, type: acctFormType, opening: Number(acctFormOpening) || 0 }]) });
-        if (directoryKey) {
-          const dir = d[directoryKey] || [];
-          next[directoryKey] = dir.includes(finalName) ? dir : dir.concat([finalName]);
-        }
-        return next;
-      });
-      acctFormName = ""; acctFormOpening = "";
     };
-    const cancelBtn = document.getElementById("acctCancelBtn");
-    if (cancelBtn) cancelBtn.onclick = () => {
-      acctEditingId = null; acctFormName = ""; acctFormOpening = ""; acctFormPickMode = null;
-      render();
-    };
-    document.querySelectorAll("[data-edit-acc]").forEach((btn) => {
-      btn.onclick = () => {
-        const id = btn.getAttribute("data-edit-acc");
-        const acc = state.accounts.find((a) => a.id === id);
-        if (!acc) return;
-        acctEditingId = id;
-        acctFormType = acc.type;
-        acctFormName = acc.name;
-        acctFormOpening = acc.opening ? String(acc.opening) : "";
-        render();
-      };
-    });
-    document.querySelectorAll("[data-del-acc]").forEach((btn) => {
-      btn.onclick = () => {
-        const id = btn.getAttribute("data-del-acc");
-        if (acctEditingId === id) { acctEditingId = null; acctFormName = ""; acctFormOpening = ""; acctFormPickMode = null; }
-        update((d) => Object.assign({}, d, { accounts: d.accounts.filter((a) => a.id !== id) }));
-      };
-    });
-  }
+    reader.onerror = () => setError("Could not read that file.");
+    reader.readAsText(file);
+  };
 
-  if (morePanelOpen === "categories") {
-    document.querySelectorAll("[data-del-cat]").forEach((btn) => {
-      btn.onclick = () => { const id = btn.getAttribute("data-del-cat"); update((d) => Object.assign({}, d, { categories: d.categories.filter((c) => c.id !== id) })); };
-    });
-    const addBtn = document.getElementById("catAddBtn");
-    if (addBtn) addBtn.onclick = () => {
-      const nameInput = document.getElementById("catName");
-      const kindSel = document.getElementById("catKind");
-      const name = nameInput.value.trim();
-      if (!name) return;
-      update((d) => Object.assign({}, d, { categories: d.categories.concat([{ id: uid(), name, kind: kindSel.value }]) }));
-    };
-  }
+  const confirmRestore = () => {
+    if (!pendingRestore) return;
+    update(() => pendingRestore);
+    setPendingRestore(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
 
-  if (morePanelOpen === "import") {
-    const fileInput = document.getElementById("csvFileInput");
-    if (fileInput) fileInput.onchange = () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-      importError = ""; importPreview = null;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const rows = parseCSV(reader.result);
-          importPreview = buildImportPlan(rows, state);
-        } catch (e) {
-          importError = "Could not read that file. Expected columns: Voucher Type, Voucher Date, Voucher Amount, Description, Category Name, Account Name.";
-        }
-        render();
-      };
-      reader.onerror = () => { importError = "Could not read the CSV file."; render(); };
-      reader.readAsText(file);
-    };
-    const confirmBtn = document.getElementById("csvConfirmBtn");
-    if (confirmBtn) confirmBtn.onclick = () => {
-      if (!importPreview) return;
-      const preview = importPreview;
-      update((d) => {
-        const newPersonNames = preview.newAccounts.filter((a) => a.type === "Person").map((a) => a.name);
-        const personDirectory = Array.from(new Set((d.personDirectory || []).concat(newPersonNames)));
-        return Object.assign({}, d, {
-          accounts: d.accounts.concat(preview.newAccounts),
-          categories: d.categories.concat(preview.newCategories),
-          transactions: d.transactions.concat(preview.transactions),
-          personDirectory,
-        });
-      });
-      importPreview = null;
-    };
-  }
+  const cancelRestore = () => {
+    setPendingRestore(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
 
-  if (morePanelOpen === "backup") {
-    const exportBtn = document.getElementById("backupExportBtn");
-    if (exportBtn) exportBtn.onclick = () => {
-      const payload = JSON.stringify(state, null, 2);
-      const blob = new Blob([payload], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = "mera-hysab-backup-" + todayStr() + ".json";
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
-      justExported = true; render();
-      setTimeout(() => { justExported = false; render(); }, 2500);
-    };
-    const fileInput = document.getElementById("backupFileInput");
-    if (fileInput) fileInput.onchange = () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-      backupError = ""; backupPending = null;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const parsed = JSON.parse(reader.result);
-          if (!Array.isArray(parsed.accounts) || !Array.isArray(parsed.transactions) || !Array.isArray(parsed.categories)) throw new Error("bad shape");
-          backupPending = withDefaults(parsed);
-        } catch (e) {
-          backupError = "That doesn\u2019t look like a valid Mera Hysab backup file.";
-        }
-        render();
-      };
-      reader.onerror = () => { backupError = "Could not read that file."; render(); };
-      reader.readAsText(file);
-    };
-    const restoreBtn = document.getElementById("backupRestoreBtn");
-    if (restoreBtn) restoreBtn.onclick = () => {
-      if (!backupPending) return;
-      state = backupPending; saveData(); backupPending = null; render();
-    };
-    const cancelBtn = document.getElementById("backupCancelBtn");
-    if (cancelBtn) cancelBtn.onclick = () => { backupPending = null; render(); };
-  }
+  return (
+    <div>
+      <p style={{ fontSize: 12.5, color: "var(--ink-soft)", marginBottom: 8 }}>
+        Download a complete copy of your accounts, categories, transactions, and budgets. Keep it somewhere safe —
+        email it to yourself, save it to Drive, whatever works. You can restore from it any time, on any device.
+      </p>
+      <button style={styles.primaryBtn} onClick={doExport}>
+        <Download size={16} /> {justExported ? "Downloaded ✓" : "Download backup (.json)"}
+      </button>
+
+      <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--paper-line)" }}>
+        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Restore from a backup file</div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".json,application/json"
+          onChange={(e) => e.target.files[0] && handleFile(e.target.files[0])}
+          style={{ fontSize: 13 }}
+        />
+        {error && (
+          <div style={styles.errorBox}>
+            <AlertCircle size={15} /> <span>{error}</span>
+          </div>
+        )}
+        {pendingRestore && (
+          <div style={{ marginTop: 10 }}>
+            <div style={styles.importSummary}>
+              <div style={{ color: "var(--debit)", fontWeight: 700 }}>
+                This replaces everything currently in the app with the backup:
+              </div>
+              <div>
+                {pendingRestore.accounts.length} accounts · {pendingRestore.categories.length} categories ·{" "}
+                {pendingRestore.transactions.length} transactions · {pendingRestore.budgets.length} budgets
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button style={{ ...styles.primaryBtn, background: "var(--debit)" }} onClick={confirmRestore}>
+                <Check size={16} /> Restore this backup
+              </button>
+              <button style={{ ...styles.primaryBtn, background: "var(--ink-soft)" }} onClick={cancelRestore}>
+                <X size={16} /> Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /* ---------------- Add / Edit Transaction Modal ---------------- */
-let modalForm = null;
-function renderModal() {
-  const editingTxn = modalState.editingTxn;
-  if (!modalForm || modalForm.editingId !== (editingTxn ? editingTxn.id : null)) {
-    modalForm = {
-      editingId: editingTxn ? editingTxn.id : null,
-      type: (editingTxn && editingTxn.type) || "expense",
-      date: (editingTxn && editingTxn.date) || todayStr(),
-      amount: editingTxn ? String(editingTxn.amount) : "",
-      accountId: (editingTxn && editingTxn.accountId) || (state.accounts[0] && state.accounts[0].id) || "",
-      fromAccountId: (editingTxn && editingTxn.fromAccountId) || (state.accounts[0] && state.accounts[0].id) || "",
-      toAccountId: (editingTxn && editingTxn.toAccountId) || (state.accounts[1] && state.accounts[1].id) || (state.accounts[0] && state.accounts[0].id) || "",
-      categoryId: (editingTxn && editingTxn.categoryId) || "",
-      description: (editingTxn && editingTxn.description) || "",
-      touched: false,
-    };
-    const relevantCats0 = state.categories.filter((c) => c.kind === (modalForm.type === "income" ? "income" : "expense"));
-    if (!relevantCats0.find((c) => c.id === modalForm.categoryId)) modalForm.categoryId = (relevantCats0[0] && relevantCats0[0].id) || "";
-  }
-  const f = modalForm;
-  const relevantCats = state.categories.filter((c) => c.kind === (f.type === "income" ? "income" : "expense"));
+
+function AddTransactionModal({ data, update, editingTxn, onClose }) {
+  const [type, setType] = useState(editingTxn?.type || "expense");
+  const [date, setDate] = useState(editingTxn?.date || todayStr());
+  const [amount, setAmount] = useState(editingTxn?.amount?.toString() || "");
+  const [accountId, setAccountId] = useState(editingTxn?.accountId || data.accounts[0]?.id || "");
+  const [fromAccountId, setFromAccountId] = useState(editingTxn?.fromAccountId || data.accounts[0]?.id || "");
+  const [toAccountId, setToAccountId] = useState(editingTxn?.toAccountId || data.accounts[1]?.id || data.accounts[0]?.id || "");
+  const [categoryId, setCategoryId] = useState(editingTxn?.categoryId || "");
+  const [description, setDescription] = useState(editingTxn?.description || "");
+  const [touched, setTouched] = useState(false);
+
+  const relevantCats = data.categories.filter((c) => c.kind === (type === "income" ? "income" : "expense"));
+
+  // Keep category valid whenever the type (income/expense) changes
+  useEffect(() => {
+    if (type === "transfer") return;
+    if (!relevantCats.find((c) => c.id === categoryId)) {
+      setCategoryId(relevantCats[0]?.id || "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type]);
 
   const errors = {
-    amount: !(Math.abs(Number(f.amount)) > 0),
-    date: !f.date,
-    account: f.type !== "transfer" && !f.accountId,
-    category: f.type !== "transfer" && !f.categoryId,
-    fromAccount: f.type === "transfer" && !f.fromAccountId,
-    toAccount: f.type === "transfer" && !f.toAccountId,
-    sameAccount: f.type === "transfer" && f.fromAccountId && f.fromAccountId === f.toAccountId,
+    amount: !(Math.abs(Number(amount)) > 0),
+    date: !date,
+    account: type !== "transfer" && !accountId,
+    category: type !== "transfer" && !categoryId,
+    fromAccount: type === "transfer" && !fromAccountId,
+    toAccount: type === "transfer" && !toAccountId,
+    sameAccount: type === "transfer" && fromAccountId && fromAccountId === toAccountId,
   };
-  const hasErrors = Object.keys(errors).some((k) => errors[k]);
-  const noCatsAvailable = f.type !== "transfer" && relevantCats.length === 0;
-  const err = (bad) => (f.touched && bad ? " err" : "");
+  const hasErrors = Object.values(errors).some(Boolean);
+  const noCategoriesAvailable = type !== "transfer" && relevantCats.length === 0;
 
-  let body = '<label class="field-label">Amount (PKR) *</label>' +
-    '<input class="text-input' + err(errors.amount) + '" type="number" id="fAmount" value="' + esc(f.amount) + '" placeholder="0" />' +
-    '<label class="field-label">Date *</label>' +
-    '<input class="text-input' + err(errors.date) + '" type="date" id="fDate" value="' + esc(f.date) + '" />';
-
-  if (f.type !== "transfer") {
-    body += '<label class="field-label">Account *</label>' +
-      '<select class="select-input' + err(errors.account) + '" id="fAccount">' +
-      (state.accounts.length === 0 ? '<option value="">Add an account first</option>' : "") +
-      state.accounts.map((a) => '<option value="' + a.id + '"' + (a.id === f.accountId ? " selected" : "") + ">" + esc(a.name) + "</option>").join("") + "</select>";
-    body += '<label class="field-label">Category *</label>';
-    if (noCatsAvailable) {
-      body += '<div class="error-box">' + icon("alert", 15) + "<span>No " + f.type + " categories yet \u2014 add one under More \u2192 Categories first.</span></div>";
-    } else {
-      body += '<select class="select-input' + err(errors.category) + '" id="fCategory">' +
-        relevantCats.map((c) => '<option value="' + c.id + '"' + (c.id === f.categoryId ? " selected" : "") + ">" + esc(c.name) + "</option>").join("") + "</select>";
-    }
-  } else {
-    body += '<label class="field-label">From *</label>' +
-      '<select class="select-input' + err(errors.fromAccount) + '" id="fFrom">' +
-      state.accounts.map((a) => '<option value="' + a.id + '"' + (a.id === f.fromAccountId ? " selected" : "") + ">" + esc(a.name) + "</option>").join("") + "</select>";
-    body += '<label class="field-label">To *</label>' +
-      '<select class="select-input' + err(errors.toAccount || errors.sameAccount) + '" id="fTo">' +
-      state.accounts.map((a) => '<option value="' + a.id + '"' + (a.id === f.toAccountId ? " selected" : "") + ">" + esc(a.name) + "</option>").join("") + "</select>";
-    if (f.touched && errors.sameAccount) {
-      body += '<div class="error-box">' + icon("alert", 15) + '<span>"From" and "To" must be different accounts.</span></div>';
-    }
-  }
-
-  body += '<label class="field-label">Description (optional)</label>' +
-    '<input class="text-input" id="fDescription" value="' + esc(f.description) + '" placeholder="Optional" />';
-  if (f.touched && hasErrors) {
-    body += '<div class="error-box">' + icon("alert", 15) + "<span>Please fill in all required fields (marked with *).</span></div>";
-  }
-  body += '<button class="primary-btn" id="fSaveBtn">' + icon("check", 16) + " " + (editingTxn ? "Save changes" : "Add entry") + "</button>";
-
-  const types = ["expense", "income", "transfer"];
-  const typeToggle = '<div class="type-toggle">' + types.map((t) => {
-    const active = f.type === t;
-    const bg = active ? (t === "income" ? "var(--credit)" : t === "expense" ? "var(--debit)" : "var(--ink)") : "transparent";
-    const color = active ? "#fff" : "var(--ink)";
-    return '<button class="type-toggle-btn" data-set-type="' + t + '" style="background:' + bg + ";color:" + color + ';">' + (t === "expense" ? "Expense" : t === "income" ? "Income" : "Transfer") + "</button>";
-  }).join("") + "</div>";
-
-  return '<div class="modal-overlay" id="modalOverlay"><div class="modal-sheet" id="modalSheet">' +
-    '<div class="modal-header"><div style="font-weight:700;font-size:15px;">' + (editingTxn ? "Edit entry" : "New entry") + '</div>' +
-    '<button class="icon-btn-ghost" id="modalCloseBtn">' + icon("x", 18) + "</button></div>" +
-    typeToggle + body + "</div></div>";
-}
-
-function wireModalEvents() {
-  const overlay = document.getElementById("modalOverlay");
-  const sheet = document.getElementById("modalSheet");
-  if (overlay) overlay.onclick = () => { modalState = null; modalForm = null; render(); };
-  if (sheet) sheet.onclick = (e) => e.stopPropagation();
-  const closeBtn = document.getElementById("modalCloseBtn");
-  if (closeBtn) closeBtn.onclick = () => { modalState = null; modalForm = null; render(); };
-
-  document.querySelectorAll("[data-set-type]").forEach((btn) => {
-    btn.onclick = () => {
-      modalForm.type = btn.getAttribute("data-set-type");
-      const relevantCats = state.categories.filter((c) => c.kind === (modalForm.type === "income" ? "income" : "expense"));
-      if (!relevantCats.find((c) => c.id === modalForm.categoryId)) modalForm.categoryId = (relevantCats[0] && relevantCats[0].id) || "";
-      render();
-    };
-  });
-
-  const bind = (id, key) => { const el = document.getElementById(id); if (el) el.oninput = () => { modalForm[key] = el.value; }; };
-  bind("fAmount", "amount"); bind("fDate", "date"); bind("fDescription", "description");
-  const accSel = document.getElementById("fAccount"); if (accSel) accSel.onchange = () => { modalForm.accountId = accSel.value; };
-  const catSel = document.getElementById("fCategory"); if (catSel) catSel.onchange = () => { modalForm.categoryId = catSel.value; };
-  const fromSel = document.getElementById("fFrom"); if (fromSel) fromSel.onchange = () => { modalForm.fromAccountId = fromSel.value; };
-  const toSel = document.getElementById("fTo"); if (toSel) toSel.onchange = () => { modalForm.toAccountId = toSel.value; };
-
-  const saveBtn = document.getElementById("fSaveBtn");
-  if (saveBtn) saveBtn.onclick = () => {
-    const f = modalForm;
-    const relevantCats = state.categories.filter((c) => c.kind === (f.type === "income" ? "income" : "expense"));
-    const errors = {
-      amount: !(Math.abs(Number(f.amount)) > 0),
-      date: !f.date,
-      account: f.type !== "transfer" && !f.accountId,
-      category: f.type !== "transfer" && !f.categoryId,
-      fromAccount: f.type === "transfer" && !f.fromAccountId,
-      toAccount: f.type === "transfer" && !f.toAccountId,
-      sameAccount: f.type === "transfer" && f.fromAccountId && f.fromAccountId === f.toAccountId,
-    };
-    const hasErrors = Object.keys(errors).some((k) => errors[k]);
-    const noCatsAvailable = f.type !== "transfer" && relevantCats.length === 0;
-    if (hasErrors || noCatsAvailable) { f.touched = true; render(); return; }
-    const amt = Math.abs(Number(f.amount));
-    const base = { id: f.editingId || uid(), type: f.type, date: f.date, amount: amt, description: f.description.trim() };
-    const txn = f.type === "transfer"
-      ? Object.assign({}, base, { fromAccountId: f.fromAccountId, toAccountId: f.toAccountId })
-      : Object.assign({}, base, { accountId: f.accountId, categoryId: f.categoryId });
+  const save = () => {
+    setTouched(true);
+    if (hasErrors || noCategoriesAvailable) return;
+    const amt = Math.abs(Number(amount));
+    const base = { id: editingTxn?.id || uid(), type, date, amount: amt, description: description.trim() };
+    const txn = type === "transfer" ? { ...base, fromAccountId, toAccountId } : { ...base, accountId, categoryId };
     update((d) => {
       const rest = d.transactions.filter((t) => t.id !== txn.id);
-      return Object.assign({}, d, { transactions: rest.concat([txn]) });
+      return { ...d, transactions: [...rest, txn] };
     });
-    modalState = null; modalForm = null;
+    onClose();
   };
+
+  const errStyle = (bad) => (touched && bad ? { border: "1.5px solid var(--debit)" } : {});
+
+  return (
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div style={styles.modalSheet} onClick={(e) => e.stopPropagation()}>
+        <div style={styles.modalHeader}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>{editingTxn ? "Edit entry" : "New entry"}</div>
+          <button style={styles.iconBtnGhost} onClick={onClose}><X size={18} /></button>
+        </div>
+
+        <div style={styles.typeToggle}>
+          {["expense", "income", "transfer"].map((t) => (
+            <button
+              key={t}
+              onClick={() => setType(t)}
+              style={{
+                ...styles.typeToggleBtn,
+                background: type === t ? (t === "income" ? "var(--credit)" : t === "expense" ? "var(--debit)" : "var(--ink)") : "transparent",
+                color: type === t ? "#fff" : "var(--ink)",
+              }}
+            >
+              {t === "expense" ? "Expense" : t === "income" ? "Income" : "Transfer"}
+            </button>
+          ))}
+        </div>
+
+        <label style={styles.label}>Amount (PKR) *</label>
+        <input
+          style={{ ...styles.textInput, ...errStyle(errors.amount) }}
+          type="number"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="0"
+          autoFocus
+        />
+
+        <label style={styles.label}>Date *</label>
+        <input style={{ ...styles.textInput, ...errStyle(errors.date) }} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+
+        {type !== "transfer" ? (
+          <>
+            <label style={styles.label}>Account *</label>
+            <select style={{ ...styles.selectInput, ...errStyle(errors.account) }} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+              {data.accounts.length === 0 && <option value="">Add an account first</option>}
+              {data.accounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+
+            <label style={styles.label}>Category *</label>
+            {noCategoriesAvailable ? (
+              <div style={styles.errorBox}>
+                <AlertCircle size={15} />
+                <span>No {type} categories yet — add one under More → Categories first.</span>
+              </div>
+            ) : (
+              <select style={{ ...styles.selectInput, ...errStyle(errors.category) }} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                {relevantCats.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            )}
+          </>
+        ) : (
+          <>
+            <label style={styles.label}>From *</label>
+            <select style={{ ...styles.selectInput, ...errStyle(errors.fromAccount) }} value={fromAccountId} onChange={(e) => setFromAccountId(e.target.value)}>
+              {data.accounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+            <label style={styles.label}>To *</label>
+            <select style={{ ...styles.selectInput, ...errStyle(errors.toAccount || errors.sameAccount) }} value={toAccountId} onChange={(e) => setToAccountId(e.target.value)}>
+              {data.accounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+            {touched && errors.sameAccount && (
+              <div style={styles.errorBox}>
+                <AlertCircle size={15} /> <span>"From" and "To" must be different accounts.</span>
+              </div>
+            )}
+          </>
+        )}
+
+        <label style={styles.label}>Description (optional)</label>
+        <input style={styles.textInput} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" />
+
+        {touched && hasErrors && (
+          <div style={styles.errorBox}>
+            <AlertCircle size={15} /> <span>Please fill in all required fields (marked with *).</span>
+          </div>
+        )}
+
+        <button style={styles.primaryBtn} onClick={save}>
+          <Check size={16} /> {editingTxn ? "Save changes" : "Add entry"}
+        </button>
+      </div>
+    </div>
+  );
 }
 
-/* ============== Boot ============== */
-render();
-</script>
-</body>
-</html>
+/* ---------------- Styles ---------------- */
+
+const styles = {
+  app: { minHeight: "100%", background: "var(--paper)", color: "var(--ink)", fontFamily: "var(--sans)", position: "relative", paddingBottom: 84 },
+  loadingWrap: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300, background: "var(--paper, #EDE3CC)" },
+  loadingCard: { fontFamily: "Georgia, serif", fontStyle: "italic", color: "#4A5A5C" },
+  header: { display: "flex", alignItems: "center", gap: 10, padding: "16px 16px 12px" },
+  headerBadge: {
+    width: 36, height: 36, borderRadius: "50%", background: "var(--ink)", color: "var(--paper)",
+    display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Georgia, serif", fontWeight: 700, fontSize: 13,
+  },
+  headerTitle: { fontFamily: "Georgia, serif", fontWeight: 700, fontSize: 18, lineHeight: 1.1 },
+  headerSub: { fontSize: 11, color: "var(--ink-soft)", fontStyle: "italic" },
+  main: { padding: "0 14px 14px" },
+  sectionLabel: { fontSize: 11.5, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--ink-soft)", margin: "4px 2px" },
+  card: { background: "var(--card-bg)", border: "1px solid var(--paper-line)", borderRadius: 12, padding: 14 },
+  ledgerCard: {
+    position: "relative", background: "var(--card-bg)", border: "1px solid var(--paper-line)", borderRadius: 14,
+    padding: "22px 18px 16px", overflow: "hidden",
+  },
+  ledgerStitch: {
+    position: "absolute", top: 8, left: 8, right: 8, bottom: 8, border: "1px dashed var(--paper-line)",
+    borderRadius: 8, pointerEvents: "none",
+  },
+  ledgerSeal: {
+    position: "absolute", top: 14, right: 16, width: 34, height: 34, borderRadius: "50%",
+    background: "var(--accent-gold)", color: "#2a1d0a", display: "flex", alignItems: "center", justifyContent: "center",
+    fontFamily: "Georgia, serif", fontWeight: 700, fontSize: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+  },
+  ledgerLabel: { fontSize: 11.5, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: 0.5 },
+  ledgerAmount: { fontFamily: "var(--mono)", fontSize: 30, fontWeight: 700, margin: "4px 0 10px" },
+  ledgerRow: { display: "flex", gap: 18, fontSize: 12.5, fontWeight: 600 },
+  accountRow: { display: "flex", alignItems: "center", gap: 10, background: "var(--card-bg)", border: "1px solid var(--paper-line)", borderRadius: 10, padding: "10px 12px" },
+  accountIconWrap: { width: 34, height: 34, borderRadius: 9, background: "var(--paper)", display: "flex", alignItems: "center", justifyContent: "center" },
+  legendWrap: { display: "flex", flexDirection: "column", gap: 5, marginTop: 6 },
+  legendItem: { display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 },
+  legendDot: { width: 9, height: 9, borderRadius: "50%", flexShrink: 0 },
+  dateHeading: { fontSize: 12, fontWeight: 700, color: "var(--ink-soft)", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 },
+  txnRow: { display: "flex", alignItems: "center", gap: 10, background: "var(--card-bg)", border: "1px solid var(--paper-line)", borderRadius: 10, padding: "10px 10px", cursor: "pointer" },
+  txnIcon: { width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  emptyState: { textAlign: "center", padding: "60px 20px", color: "var(--ink-soft)" },
+  fab: {
+    position: "fixed", bottom: 66, left: "50%", transform: "translateX(-50%)", width: 56, height: 56, borderRadius: "50%",
+    background: "var(--ink)", color: "var(--paper)", border: "3px solid var(--paper)", display: "flex", alignItems: "center",
+    justifyContent: "center", boxShadow: "0 3px 10px rgba(0,0,0,0.3)", cursor: "pointer", zIndex: 20,
+  },
+  nav: {
+    position: "fixed", bottom: 0, left: 0, right: 0, height: 62, background: "var(--card-bg)", borderTop: "1px solid var(--paper-line)",
+    display: "flex", alignItems: "center", justifyContent: "space-around", zIndex: 10,
+  },
+  navBtn: { background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", position: "relative", padding: 6, cursor: "pointer" },
+  navDot: { position: "absolute", bottom: -1, width: 4, height: 4, borderRadius: "50%", background: "var(--accent-gold)" },
+  modalOverlay: { position: "fixed", inset: 0, background: "rgba(20,20,15,0.45)", display: "flex", alignItems: "flex-end", zIndex: 30 },
+  modalSheet: { background: "var(--paper)", width: "100%", maxHeight: "88vh", overflowY: "auto", borderRadius: "18px 18px 0 0", padding: 18 },
+  modalHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  typeToggle: { display: "flex", gap: 6, marginBottom: 14, background: "var(--card-bg)", border: "1px solid var(--paper-line)", borderRadius: 10, padding: 4 },
+  typeToggleBtn: { flex: 1, padding: "8px 0", borderRadius: 7, border: "none", fontWeight: 600, fontSize: 12.5, cursor: "pointer" },
+  label: { fontSize: 11.5, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: 0.4, marginTop: 10, display: "block" },
+  textInput: {
+    width: "100%", boxSizing: "border-box", padding: "9px 11px", borderRadius: 8, border: "1px solid var(--paper-line)",
+    background: "var(--card-bg)", fontSize: 14, marginTop: 4, color: "var(--ink)", fontFamily: "var(--sans)",
+  },
+  selectInput: {
+    width: "100%", boxSizing: "border-box", padding: "9px 11px", borderRadius: 8, border: "1px solid var(--paper-line)",
+    background: "var(--card-bg)", fontSize: 14, marginTop: 4, color: "var(--ink)", fontFamily: "var(--sans)",
+  },
+  primaryBtn: {
+    width: "100%", marginTop: 18, padding: "12px 0", borderRadius: 10, border: "none", background: "var(--ink)",
+    color: "var(--paper)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer",
+  },
+  smallBtn: { padding: "6px 10px", borderRadius: 8, border: "none", background: "var(--ink)", color: "var(--paper)", cursor: "pointer", display: "flex" },
+  editRow: { display: "flex", alignItems: "center", gap: 8, padding: "6px 2px", fontSize: 13.5, borderBottom: "1px solid var(--paper-line)" },
+  addRow: { display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" },
+  iconBtnGhost: { background: "none", border: "none", color: "var(--ink-soft)", cursor: "pointer", padding: 4, display: "flex" },
+  collapsibleHeader: { width: "100%", display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", padding: 0, color: "var(--ink)" },
+  budgetInput: { width: 96, padding: "6px 8px", borderRadius: 7, border: "1px solid var(--paper-line)", background: "var(--paper)", fontSize: 13, fontFamily: "var(--mono)" },
+  progressTrack: { height: 7, borderRadius: 4, background: "var(--paper)", overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 4 },
+  errorBox: { display: "flex", alignItems: "flex-start", gap: 6, background: "var(--debit-bg)", color: "var(--debit)", padding: "8px 10px", borderRadius: 8, fontSize: 12.5, marginTop: 8 },
+  importSummary: { fontSize: 13, display: "flex", flexDirection: "column", gap: 3, marginBottom: 10 },
+};
+
+const css = `
+  :root {
+    --paper: #EDE3CC;
+    --paper-line: #C9BB98;
+    --card-bg: #FBF7EC;
+    --ink: #1C2B2E;
+    --ink-soft: #6B6350;
+    --debit: #8B2E28;
+    --debit-bg: #F3E1DE;
+    --credit: #2F5233;
+    --credit-bg: #E2EAE0;
+    --accent-gold: #C99A3E;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  input:focus, select:focus, button:focus-visible {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 1px;
+  }
+  input[type="date"] { font-family: var(--sans); }
+`;
